@@ -8,6 +8,7 @@ class TipeKendaraan extends Model
 {
     protected $table = 'tipe_kendaraan';
     protected $primaryKey = 'id_tipe';
+    public $timestamps = false;
 
     protected $fillable = [
         'tipe_kendaraan',

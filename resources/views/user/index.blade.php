@@ -3,7 +3,6 @@
 @section('content')
 <div class="d-flex justify-content-between mb-3">
     <h4>Data Users</h4>
-    <a href="{{ route('user.create') }}" class="btn btn-primary">Tambah User</a>
 </div>
 
 @if(session('success'))
@@ -38,4 +37,9 @@
         @endforeach
     </tbody>
 </table>
+
+<a href="{{ route('user.create') }}" class="btn btn-primary mb-3 mt-4">
+    Tambah User
+</a>
+
 @endsection
