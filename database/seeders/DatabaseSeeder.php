@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
         UsersSeeder::class,
         TipeKendaraanSeeder::class,
         AreaParkirSeeder::class,
+        PemilikSeeder::class,
     ]);
     }
 }

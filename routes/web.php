@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TipeKendaraanController;
+use App\Http\Controllers\PemilikController;
 
 Route::get('/', function () {
     return view('app');
@@ -13,3 +14,5 @@ Route::get('user/{user}/password', [UserController::class, 'editPassword'])->nam
 Route::put('user/{user}/password', [UserController::class, 'updatePassword'])->name('user.password.update');
 
 Route::resource('tipe-kendaraan', TipeKendaraanController::class);
+
+Route::resource('pemilik', PemilikController::class);

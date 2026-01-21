@@ -3,7 +3,7 @@
 
 <nav class="navbar bg-primary py-3">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold fs-4 text-white" href="{{ url('/') }}">
+    <a class="navbar-brand fw-bold fs-4 text-white ms-3" href="{{ url('/') }}">
       <i class="fa-solid fa-square-parking me-2"></i>
       Parking Management
     </a>
@@ -35,6 +35,7 @@
 
     <ul class="dropdown-menu">
       <li><a class="dropdown-item" href="{{ route('user.index') }}">User</a></li>
+      <li><a class="dropdown-item" href="{{ route('pemilik.index') }}">Pemilik</a></li>
       <li><a class="dropdown-item" href="#">Data Member</a></li>
       <li><a class="dropdown-item" href="#">Area Parkir</a></li>
       <li><a class="dropdown-item" href="{{ route('tipe-kendaraan.index') }}">Tipe Kendaraan</a></li>

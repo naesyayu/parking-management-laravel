@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Set database yang akan digunakan
         DB::statement("USE `parking-management`");
         
         Schema::create('pemilik', function (Blueprint $table) {
-            $table->id('id_pemilik'); // Primary key dengan nama id_pemilik
+            $table->id('id_pemilik'); 
             $table->string('nama', 100);
             $table->string('no_hp', 20);
             $table->text('alamat');
