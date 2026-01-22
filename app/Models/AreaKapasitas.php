@@ -9,6 +9,8 @@ class AreaKapasitas extends Model
     protected $table = 'area_kapasitas';
     protected $primaryKey = 'id_kapasitas';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'id_area',
         'id_tipe',

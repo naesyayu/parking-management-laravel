@@ -5,6 +5,8 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TipeKendaraanController;
 use App\Http\Controllers\PemilikController;
 use App\Http\Controllers\AreaParkirController;
+use App\Http\Controllers\AreaKapasitasController;
+use App\Http\Controllers\KendaraanController;
 
 Route::get('/', function () {
     return view('app');
@@ -19,3 +21,5 @@ Route::resource('tipe-kendaraan', TipeKendaraanController::class);
 Route::resource('pemilik', PemilikController::class);
 
 Route::resource('area-parkir', AreaParkirController::class);
+
+Route::resource('data-kendaraan', KendaraanController::class);
