@@ -22,4 +22,6 @@ Route::resource('pemilik', PemilikController::class);
 
 Route::resource('area-parkir', AreaParkirController::class);
 
+Route::resource('area-kapasitas', AreaKapasitasController::class);
+
 Route::resource('data-kendaraan', KendaraanController::class);
