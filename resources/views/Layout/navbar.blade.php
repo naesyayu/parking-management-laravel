@@ -37,7 +37,7 @@
       <li><a class="dropdown-item" href="{{ route('user.index') }}">User</a></li>
       <li><a class="dropdown-item" href="{{ route('pemilik.index') }}">Pemilik</a></li>
       <li><a class="dropdown-item" href="#">Data Member</a></li>
-      <li><a class="dropdown-item" href="#">Area Parkir</a></li>
+      <li><a class="dropdown-item" href="{{ route('area-parkir.index') }}">Area Parkir</a></li>
       <li><a class="dropdown-item" href="{{ route('tipe-kendaraan.index') }}">Tipe Kendaraan</a></li>
       <li><a class="dropdown-item" href="#">Data Kendaraan</a></li>
       <li><a class="dropdown-item" href="#">Tarif Parkir</a></li>

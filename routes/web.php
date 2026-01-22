@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TipeKendaraanController;
 use App\Http\Controllers\PemilikController;
+use App\Http\Controllers\AreaParkirController;
 
 Route::get('/', function () {
     return view('app');
@@ -16,3 +17,5 @@ Route::put('user/{user}/password', [UserController::class, 'updatePassword'])->n
 Route::resource('tipe-kendaraan', TipeKendaraanController::class);
 
 Route::resource('pemilik', PemilikController::class);
+
+Route::resource('area-parkir', AreaParkirController::class);
