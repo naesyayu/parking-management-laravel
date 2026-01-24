@@ -23,4 +23,10 @@ class TipeKendaraan extends Model
     {
         return $this->hasMany(AreaKapasitas::class, 'id_tipe');
     }
+
+    public function tarifParkir()
+    {
+        return $this->hasMany(TarifParkir::class, 'id_tipe');
+    }
+
 }

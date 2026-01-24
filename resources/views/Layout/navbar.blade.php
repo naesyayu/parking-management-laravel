@@ -41,7 +41,7 @@
       <li><a class="dropdown-item" href="{{ route('area-kapasitas.index') }}">Kapasitas Area Parkir</a></li>
       <li><a class="dropdown-item" href="{{ route('tipe-kendaraan.index') }}">Tipe Kendaraan</a></li>
       <li><a class="dropdown-item" href="{{ route('data-kendaraan.index') }}">Data Kendaraan</a></li>
-      <li><a class="dropdown-item" href="#">Tarif Parkir</a></li>
+      <li><a class="dropdown-item" href="{{ route('tarif-parkir.index') }}">Tarif Parkir</a></li>
     </ul>
   </li>
 </ul>
