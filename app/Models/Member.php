@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon;
+
 
 class Member extends Model
 {
@@ -37,4 +39,24 @@ class Member extends Model
     {
         return $this->belongsTo(MemberLevel::class, 'id_level');
     }
+
+    public function isExpired(): bool
+    {
+        return Carbon::now()->gt($this->berlaku_hingga);
+    }
+
+    protected static function booted()
+    {
+        static::retrieved(function ($member) {
+            if (
+                $member->status === 'aktif' &&
+                now()->gt($member->berlaku_hingga)
+            ) {
+                $member->updateQuietly([
+                    'status' => 'expired'
+                ]);
+            }
+        });
+    }
+
 }

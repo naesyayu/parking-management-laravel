@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         TipeKendaraanSeeder::class,
         AreaParkirSeeder::class,
         PemilikSeeder::class,
+        MemberLevelSeeder::class,
     ]);
     }
 }

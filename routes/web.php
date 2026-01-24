@@ -7,6 +7,7 @@ use App\Http\Controllers\PemilikController;
 use App\Http\Controllers\AreaParkirController;
 use App\Http\Controllers\AreaKapasitasController;
 use App\Http\Controllers\KendaraanController;
+use App\Http\Controllers\MemberController;
 
 Route::get('/', function () {
     return view('app');
@@ -25,3 +26,5 @@ Route::resource('area-parkir', AreaParkirController::class);
 Route::resource('area-kapasitas', AreaKapasitasController::class);
 
 Route::resource('data-kendaraan', KendaraanController::class);
+
+Route::resource('member', MemberController::class);
