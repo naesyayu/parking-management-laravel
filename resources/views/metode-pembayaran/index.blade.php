@@ -1,7 +1,7 @@
 @extends('app')
 
 @section('content')
-<h4>Data Tipe Kendaraan</h4>
+<h4>Data Metode Pembayaran</h4>
 
 @if(session('success'))
 <div class="alert alert-success">{{ session('success') }}</div>
@@ -11,25 +11,23 @@
     <thead>
         <tr>
             <th>No</th>
-            <th>Kode Tipe</th>
-            <th>Tipe Kendaraan</th>
-            <th>Deskripsi</th>
+            <th>Metode Pembayaran</th>
             <th>Aksi</th>
         </tr>
     </thead>
     <tbody>
-        @foreach($tipeKendaraan as $item)
+        @foreach($metodePembayaran as $item)
         <tr>
             <td>{{ $loop->iteration }}</td>
-            <td>{{ $item->kode_tipe }}</td>
-            <td>{{ $item->tipe_kendaraan }}</td>
-            <td>{{ $item->deskripsi_tipe ?? '-' }}</td>
+            <td>{{ $item->metode_bayar }}</td>
             <td>
-                <a href="{{ route('tipe-kendaraan.edit', $item) }}" class="btn btn-warning btn-sm">
+                <a href="{{ route('metode-pembayaran.edit', $item) }}"
+                   class="btn btn-warning btn-sm">
                     Edit
                 </a>
 
-                <form action="{{ route('tipe-kendaraan.destroy', $item) }}" method="POST" class="d-inline">
+                <form action="{{ route('metode-pembayaran.destroy', $item) }}"
+                      method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
                     <button class="btn btn-danger btn-sm"
@@ -43,8 +41,8 @@
     </tbody>
 </table>
 
-<a href="{{ route('tipe-kendaraan.create') }}" class="btn btn-primary mb-3 mt-3">
-    + Tambah Tipe Kendaraan
+<a href="{{ route('metode-pembayaran.create') }}"
+   class="btn btn-primary mt-3">
+    + Tambah Metode Pembayaran
 </a>
-
 @endsection

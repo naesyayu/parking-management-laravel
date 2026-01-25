@@ -27,5 +27,10 @@ class Pemilik extends Model
     {
         return $this->hasMany(Member::class, 'id_pemilik');
     }
+
+    public function transaksiParkir()
+    {
+        return $this->hasMany(TransaksiParkir::class, 'id_pemilik', 'id_pemilik');
+    }
     
 }

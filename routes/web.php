@@ -9,6 +9,7 @@ use App\Http\Controllers\AreaKapasitasController;
 use App\Http\Controllers\KendaraanController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\TarifParkirController;
+use App\Http\Controllers\MetodePembayaranController;
 
 Route::get('/', function () {
     return view('app');
@@ -31,3 +32,5 @@ Route::resource('data-kendaraan', KendaraanController::class);
 Route::resource('member', MemberController::class);
 
 Route::resource('tarif-parkir', TarifParkirController::class);
+
+Route::resource('metode-pembayaran', MetodePembayaranController::class);

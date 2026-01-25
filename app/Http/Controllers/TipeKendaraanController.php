@@ -21,11 +21,15 @@ class TipeKendaraanController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'kode_tipe' => 'required|unique:tipe_kendaraan,kode_tipe',
             'tipe_kendaraan' => 'required|unique:tipe_kendaraan,tipe_kendaraan',
+            'deskripsi_tipe' => 'nullable|string',
         ]);
 
         TipeKendaraan::create([
-            'tipe_kendaraan' => $request->tipe_kendaraan,
+            'kode_tipe' => 'required|unique:tipe_kendaraan,kode_tipe',
+            'tipe_kendaraan' => 'required|unique:tipe_kendaraan,tipe_kendaraan',
+            'deskripsi_tipe' => 'nullable|string',
         ]);
 
         return redirect()->route('tipe-kendaraan.index')
@@ -40,12 +44,21 @@ class TipeKendaraanController extends Controller
     public function update(Request $request, TipeKendaraan $tipe_kendaraan)
     {
         $request->validate([
-            'tipe_kendaraan' => 'required|unique:tipe_kendaraan,tipe_kendaraan,' 
-                . $tipe_kendaraan->id_tipe . ',id_tipe',
+            'kode_tipe' => 'required|unique:tipe_kendaraan,kode_tipe,'
+            . $tipe_kendaraan->id_tipe . ',id_tipe',
+
+
+            'tipe_kendaraan' => 'required|unique:tipe_kendaraan,tipe_kendaraan,'
+            . $tipe_kendaraan->id_tipe . ',id_tipe',
+
+
+            'deskripsi_tipe' => 'nullable|string',
         ]);
 
         $tipe_kendaraan->update([
+            'kode_tipe' => $request->kode_tipe,
             'tipe_kendaraan' => $request->tipe_kendaraan,
+            'deskripsi_tipe' => $request->deskripsi_tipe,
         ]);
 
         return redirect()->route('tipe-kendaraan.index')

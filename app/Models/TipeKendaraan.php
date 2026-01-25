@@ -11,7 +11,9 @@ class TipeKendaraan extends Model
     public $timestamps = false;
 
     protected $fillable = [
+        'kode_tipe',
         'tipe_kendaraan',
+        'deskripsi_tipe',
     ];
 
     public function kendaraan()

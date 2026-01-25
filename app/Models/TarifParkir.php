@@ -29,4 +29,9 @@ class TarifParkir extends Model
     {
         return $this->belongsTo(TipeKendaraan::class, 'id_tipe');
     }
+
+    public function transaksiParkir()
+    {
+        return $this->hasMany(TransaksiParkir::class, 'id_tarif', 'id_tarif');
+    }
 }

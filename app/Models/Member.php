@@ -34,7 +34,6 @@ class Member extends Model
         return $this->belongsTo(Pemilik::class, 'id_pemilik');
     }
 
-    // Relasi ke member_level
     public function level()
     {
         return $this->belongsTo(MemberLevel::class, 'id_level');
@@ -57,6 +56,11 @@ class Member extends Model
                 ]);
             }
         });
+    }
+
+    public function transaksiParkir()
+    {
+        return $this->hasMany(TransaksiParkir::class, 'id_member', 'id_member');
     }
 
 }

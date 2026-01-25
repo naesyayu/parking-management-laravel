@@ -21,7 +21,14 @@
   <li class="nav-item">
     <a class="nav-link {{ request()->is('/') ? 'active text-primary fw-semibold' : 'text-dark' }}"
        href="{{ url('/') }}">
-       Dashboard
+       Dashboard Laporan
+    </a>
+  </li>
+
+  <li class="nav-item">
+    <a class="nav-link {{ request()->is('/') ? 'active text-primary fw-semibold' : 'text-dark' }}"
+       href="{{ url('/') }}">
+       Riwayat Transaksi
     </a>
   </li>
 
@@ -42,6 +49,7 @@
       <li><a class="dropdown-item" href="{{ route('tipe-kendaraan.index') }}">Tipe Kendaraan</a></li>
       <li><a class="dropdown-item" href="{{ route('data-kendaraan.index') }}">Data Kendaraan</a></li>
       <li><a class="dropdown-item" href="{{ route('tarif-parkir.index') }}">Tarif Parkir</a></li>
+      <li><a class="dropdown-item" href="{{ route('metode-pembayaran.index') }}">Metode Pembayaran</a></li>
     </ul>
   </li>
 </ul>

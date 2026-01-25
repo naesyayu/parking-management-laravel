@@ -16,17 +16,17 @@ return new class extends Migration {
 
             $table->unsignedBigInteger('kode_tiket');
 
-            $table->unsignedInteger('id_kendaraan');
-            $table->unsignedInteger('id_area');
+            $table->unsignedBigInteger('id_kendaraan');
+            $table->unsignedBigInteger('id_area');
 
             $table->dateTime('waktu_masuk');
             $table->dateTime('waktu_keluar');
 
             $table->decimal('durasi_jam', 6, 2);
 
-            $table->unsignedInteger('id_tarif');
-            $table->unsignedInteger('id_user')->nullable();
-            $table->unsignedInteger('id_member')->nullable();
+            $table->unsignedBigInteger('id_tarif');
+            $table->unsignedBigInteger('id_user')->nullable();
+            $table->unsignedBigInteger('id_member')->nullable();
 
             /**
              * 🔥 METODE PEMBAYARAN (FK)
