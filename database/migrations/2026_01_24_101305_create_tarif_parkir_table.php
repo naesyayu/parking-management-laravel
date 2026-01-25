@@ -25,11 +25,7 @@ return new class extends Migration
             $table->softDeletes(); // deleted_at
             $table->timestamps();  // created_at & updated_at
 
-            /*
-            |----------------------------------
-            | Foreign Key Constraints
-            |----------------------------------
-            */
+            /* Foreign Key */
             $table->foreign('id_tarif_detail')
                   ->references('id_tarif_detail')
                   ->on('detail_parkir')
@@ -49,9 +45,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tarif_parkir');
