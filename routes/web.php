@@ -10,6 +10,7 @@ use App\Http\Controllers\KendaraanController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\TarifParkirController;
 use App\Http\Controllers\MetodePembayaranController;
+use App\Http\Controllers\RoleController;
 
 Route::get('/', function () {
     return view('app');
@@ -34,3 +35,5 @@ Route::resource('member', MemberController::class);
 Route::resource('tarif-parkir', TarifParkirController::class);
 
 Route::resource('metode-pembayaran', MetodePembayaranController::class);
+
+Route::resource('roles', RoleController::class);
