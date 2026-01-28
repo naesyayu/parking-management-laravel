@@ -1,0 +1,259 @@
+@extends('app')
+
+@section('content')
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-car"></i> Transaksi Parkir Masuk
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    @if(session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle"></i> {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    <form action="{{ route('parkir.masuk.store') }}" method="POST" id="formMasuk">
+                        @csrf
+
+                        {{-- Input Plat Nomor --}}
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-id-card"></i> Plat Nomor Kendaraan
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group input-group-lg">
+                                <input 
+                                    type="text" 
+                                    name="plat_nomor" 
+                                    id="inputPlatNomor"
+                                    class="form-control text-uppercase @error('plat_nomor') is-invalid @enderror" 
+                                    placeholder="Contoh: B1234XYZ"
+                                    value="{{ old('plat_nomor') }}"
+                                    required 
+                                    autofocus
+                                >
+                                <button class="btn btn-outline-secondary" type="button" id="btnCekPlat">
+                                    <i class="fas fa-search"></i> Cek
+                                </button>
+                            </div>
+                            @error('plat_nomor')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <small class="text-muted">Plat nomor akan otomatis diubah ke huruf kapital</small>
+                            
+                            {{-- Status Kendaraan --}}
+                            <div id="statusKendaraan" class="mt-2" style="display: none;"></div>
+                        </div>
+
+                        {{-- Dropdown Tipe Kendaraan --}}
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-motorcycle"></i> Tipe Kendaraan
+                                <span class="text-danger">*</span>
+                            </label>
+                            <select 
+                                name="id_tipe" 
+                                id="tipeKendaraan" 
+                                class="form-select form-select-lg @error('id_tipe') is-invalid @enderror" 
+                                required
+                            >
+                                <option value="">-- Pilih Tipe Kendaraan --</option>
+                                @foreach($tipe as $t)
+                                    <option value="{{ $t->id_tipe }}" {{ old('id_tipe') == $t->id_tipe ? 'selected' : '' }}>
+                                        {{ $t->tipe_kendaraan }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('id_tipe')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- Info Slot Parkir --}}
+                        <div class="mb-4" id="infoSlotParkir" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-parking"></i> Slot Parkir Tersedia
+                                </h6>
+                                <div id="slotInfo"></div>
+                            </div>
+                        </div>
+
+                        {{-- Tombol Submit --}}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save"></i> Simpan & Cetak Tiket
+                            </button>
+                            <a href="{{ route('parkir.masuk') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left"></i> Kembali
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- Card Ketersediaan Slot --}}
+            <div class="card shadow mt-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-parking"></i> Ketersediaan Slot Parkir
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach($kapasitas as $idTipe => $areas)
+                            <div class="col-md-6 mb-3">
+                                <h6 class="fw-bold">{{ $areas->first()->tipe->tipe_kendaraan }}</h6>
+                                @foreach($areas as $k)
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span>
+                                            <i class="fas fa-map-marker-alt text-primary"></i>
+                                            {{ $k->area->lokasi }}
+                                        </span>
+                                        <span class="badge {{ $k->kapasitas > 10 ? 'bg-success' : ($k->kapasitas > 0 ? 'bg-warning' : 'bg-danger') }}">
+                                            {{ $k->kapasitas }} slot
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+const kapasitasData = @json($kapasitas);
+
+// Auto uppercase plat nomor
+document.getElementById('inputPlatNomor').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/\s+/g, '');
+});
+
+// Cek plat nomor saat tombol diklik atau Enter ditekan
+document.getElementById('btnCekPlat').addEventListener('click', cekPlatNomor);
+
+document.getElementById('inputPlatNomor').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        cekPlatNomor();
+    }
+});
+
+// Fungsi cek plat nomor via AJAX
+function cekPlatNomor() {
+    const platNomor = document.getElementById('inputPlatNomor').value.trim();
+    const statusDiv = document.getElementById('statusKendaraan');
+    const selectTipe = document.getElementById('tipeKendaraan');
+    
+    if (!platNomor) {
+        alert('Masukkan plat nomor terlebih dahulu');
+        return;
+    }
+    
+    // Show loading
+    statusDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Memeriksa data kendaraan...</div>';
+    statusDiv.style.display = 'block';
+    
+    // AJAX Request
+    fetch('{{ route("parkir.masuk.cek-plat") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ plat_nomor: platNomor })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.data.sudah_terdaftar) {
+                // Kendaraan sudah terdaftar - auto fill tipe
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> 
+                        <strong>Kendaraan Terdaftar</strong><br>
+                        Tipe: ${data.data.tipe_kendaraan}
+                    </div>
+                `;
+                
+                // Set tipe kendaraan otomatis
+                selectTipe.value = data.data.id_tipe;
+                selectTipe.disabled = true; // Disable karena sudah terdaftar
+                
+                // Trigger change event untuk tampilkan slot
+                selectTipe.dispatchEvent(new Event('change'));
+            } else {
+                // Kendaraan baru
+                statusDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Kendaraan Baru</strong><br>
+                        Silakan pilih tipe kendaraan
+                    </div>
+                `;
+                
+                selectTipe.disabled = false;
+                selectTipe.value = '';
+            }
+        } else {
+            statusDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> Terjadi kesalahan saat memeriksa data
+            </div>
+        `;
+    });
+}
+
+// Event listener untuk tipe kendaraan - tampilkan slot tersedia
+document.getElementById('tipeKendaraan').addEventListener('change', function() {
+    const idTipe = this.value;
+    const infoDiv = document.getElementById('infoSlotParkir');
+    const slotInfo = document.getElementById('slotInfo');
+    
+    if (idTipe && kapasitasData[idTipe]) {
+        let html = '<ul class="mb-0">';
+        let totalSlot = 0;
+        
+        kapasitasData[idTipe].forEach(area => {
+            html += `<li><strong>${area.area.lokasi}</strong>: ${area.kapasitas} slot tersedia</li>`;
+            totalSlot += area.kapasitas;
+        });
+        
+        html += '</ul>';
+        html += `<hr class="my-2"><strong>Total Slot Tersedia: ${totalSlot} slot</strong>`;
+        
+        slotInfo.innerHTML = html;
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+});
+</script>
+@endpush
+@endsection

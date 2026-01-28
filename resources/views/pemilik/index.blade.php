@@ -7,6 +7,14 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+<a href="{{ route('pemilik.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Pemilik
+</a>
+
+<a href="{{ route('pemilik.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Data Terhapus
+</a>
+
 <table class="table table-bordered">
     <thead>
         <tr>
@@ -14,7 +22,7 @@
             <th>Nama</th>
             <th>No HP</th>
             <th>Alamat</th>
-            <th width="150">Aksi</th>
+            <th>Aksi</th>
         </tr>
     </thead>
     <tbody>
@@ -43,7 +51,4 @@
     </tbody>
 </table>
 
-<a href="{{ route('pemilik.create') }}" class="btn btn-primary mb-3 mt-4">
-    Tambah Pemilik
-</a>
 @endsection

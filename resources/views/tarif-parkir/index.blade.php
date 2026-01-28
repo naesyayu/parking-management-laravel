@@ -3,6 +3,10 @@
 @section('content')
 <h4>Tarif Parkir</h4>
 
+<a href="{{ route('tarif-parkir.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Tarif
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>
@@ -42,9 +46,5 @@
         @endforeach
     </tbody>
 </table>
-
-<a href="{{ route('tarif-parkir.create') }}" class="btn btn-primary mb-3 mt-4">
-    Tambah Tarif
-</a>
 
 @endsection

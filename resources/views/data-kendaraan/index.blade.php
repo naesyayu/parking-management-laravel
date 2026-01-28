@@ -3,6 +3,10 @@
 @section('content')
 <h4>Data Kendaraan</h4>
 
+<a href="{{ route('data-kendaraan.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Kendaraan
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>
@@ -39,9 +43,5 @@
         @endforeach
     </tbody>
 </table>
-
-<a href="{{ route('data-kendaraan.create') }}" class="btn btn-primary mb-3 mt-4">
-    Tambah Kendaraan
-</a>
 
 @endsection

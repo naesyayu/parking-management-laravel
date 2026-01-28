@@ -26,6 +26,11 @@ class TransaksiParkir extends Model
         'status',
     ];
 
+    protected $casts = [
+        'waktu_masuk' => 'datetime',
+        'waktu_keluar' => 'datetime',
+    ];
+
     /**
     * =====================
     * RELASI MASTER DATA
@@ -53,7 +58,7 @@ class TransaksiParkir extends Model
 
     public function user()
     {
-    return $this->belongsTo(User::class, 'id_user', 'id');
+    return $this->belongsTo(User::class, 'id_user', 'id_user');
     }
 
 

@@ -39,4 +39,9 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class, 'id_role', 'id_role');
     }
 
+    public function transaksiParkir()
+    {
+        return $this->hasMany(TransaksiParkir::class, 'id_user', 'id_user');
+    }
+
 }

@@ -7,6 +7,11 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+<a href="{{ route('metode-pembayaran.create') }}"
+   class="btn btn-primary mb- 3 mt-4">
+    + Tambah Metode Pembayaran
+</a>
+
 <table class="table table-bordered mt-4">
     <thead>
         <tr>
@@ -41,8 +46,4 @@
     </tbody>
 </table>
 
-<a href="{{ route('metode-pembayaran.create') }}"
-   class="btn btn-primary mt-3">
-    + Tambah Metode Pembayaran
-</a>
 @endsection

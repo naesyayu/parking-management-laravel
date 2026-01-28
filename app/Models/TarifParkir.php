@@ -21,13 +21,13 @@ class TarifParkir extends Model
     // Relasi ke detail parkir
     public function detailParkir()
     {
-        return $this->belongsTo(DetailParkir::class, 'id_tarif_detail');
+        return $this->belongsTo(DetailParkir::class, 'id_tarif_detail', 'id_tarif_detail');
     }
 
     // Relasi ke tipe kendaraan
     public function tipeKendaraan()
     {
-        return $this->belongsTo(TipeKendaraan::class, 'id_tipe');
+        return $this->belongsTo(TipeKendaraan::class, 'id_tipe', 'id_tipe');
     }
 
     public function transaksiParkir()

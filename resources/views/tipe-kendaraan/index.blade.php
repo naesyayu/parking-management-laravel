@@ -7,6 +7,10 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+<a href="{{ route('tipe-kendaraan.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Tipe Kendaraan
+</a>
+
 <table class="table table-bordered mt-4">
     <thead>
         <tr>
@@ -42,9 +46,5 @@
         @endforeach
     </tbody>
 </table>
-
-<a href="{{ route('tipe-kendaraan.create') }}" class="btn btn-primary mb-3 mt-3">
-    + Tambah Tipe Kendaraan
-</a>
 
 @endsection

@@ -59,4 +59,24 @@ class PemilikController extends Controller
         return redirect()->route('pemilik.index')
             ->with('success', 'Pemilik berhasil dihapus');
     }
+
+    // 🔹 HALAMAN DATA TERHAPUS
+    public function trash()
+    {
+    $pemilik = Pemilik::onlyTrashed()->get();
+    return view('pemilik.trash', compact('pemilik'));
+    }
+
+
+    // 🔹 RESTORE DATA
+    public function restore($id)
+    {
+    $pemilik = Pemilik::onlyTrashed()->findOrFail($id);
+    $pemilik->restore();
+
+
+    return redirect()
+    ->route('pemilik.trash')
+    ->with('success', 'Data berhasil dikembalikan');
+    }
 }

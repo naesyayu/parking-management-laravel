@@ -14,24 +14,23 @@ return new class extends Migration {
 
             $table->id('id_transaksi');
 
-            $table->unsignedBigInteger('kode_tiket');
+            $table->string('kode_tiket', 50)->unique();
 
             $table->unsignedBigInteger('id_kendaraan');
             $table->unsignedBigInteger('id_area');
 
             $table->dateTime('waktu_masuk');
-            $table->dateTime('waktu_keluar');
-
-            $table->decimal('durasi_jam', 6, 2);
-
-            $table->unsignedBigInteger('id_tarif');
+            $table->dateTime('waktu_keluar')->nullable();
+            $table->decimal('durasi_jam', 6, 2)->nullable();
+            $table->unsignedBigInteger('id_tarif')->nullable();;
+;
             $table->unsignedBigInteger('id_user')->nullable();
             $table->unsignedBigInteger('id_member')->nullable();
 
             /**
              * 🔥 METODE PEMBAYARAN (FK)
              */
-            $table->unsignedBigInteger('id_metode');
+            $table->unsignedBigInteger('id_metode')->nullable();
 
             /**
              * Status kendaraan

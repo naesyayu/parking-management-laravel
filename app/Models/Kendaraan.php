@@ -21,12 +21,12 @@ class Kendaraan extends Model
 
     public function pemilik()
     {
-        return $this->belongsTo(Pemilik::class, 'id_pemilik');
+        return $this->belongsTo(Pemilik::class, 'id_pemilik', 'id_pemilik');
     }
 
     public function tipe()
     {
-        return $this->belongsTo(TipeKendaraan::class, 'id_tipe');
+        return $this->belongsTo(TipeKendaraan::class, 'id_tipe', 'id_tipe' );
     }
 
     public function transaksiParkir()

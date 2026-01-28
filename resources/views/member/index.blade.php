@@ -7,6 +7,10 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+<a href="{{ route('member.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Member
+</a>
+
 <table class="table table-bordered mt-3">
     <thead class="table-light">
         <tr>
@@ -50,9 +54,5 @@
         @endforeach
     </tbody>
 </table>
-
-<a href="{{ route('member.create') }}" class="btn btn-primary mb-3 mt-4">
-    Tambah Member
-</a>
 
 @endsection

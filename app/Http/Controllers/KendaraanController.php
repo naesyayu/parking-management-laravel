@@ -49,7 +49,7 @@ class KendaraanController extends Controller
     public function update(Request $request, Kendaraan $data_kendaraan)
     {
         $request->validate([
-            'plat_nomor' => 'required|min:3|unique:kendaraan,plat_nomor,' . $data_kendaraan->id_kendaraan . ',id_kendaraan',
+            'plat_nomor' => 'required|min:9|max:12|unique:kendaraan,plat_nomor,' . $data_kendaraan->id_kendaraan . ',id_kendaraan',
             'id_pemilik' => 'nullable|exists:pemilik,id_pemilik',
             'id_tipe'    => 'required|exists:tipe_kendaraan,id_tipe',
             'status'     => 'required|in:aktif,nonaktif',

@@ -3,6 +3,10 @@
 @section('content')
 <h4>Data Area Parkir</h4>
 
+<a href="{{ route('area-parkir.create') }}" class="btn btn-primary mb-3 mt-4">
+   + Tambah Area
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>
@@ -40,7 +44,4 @@
     </tbody>
 </table>
 
-<a href="{{ route('area-parkir.create') }}" class="btn btn-primary mb-3 mt-4">
-    Tambah Area
-</a>
 @endsection

@@ -7,6 +7,10 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
+<a href="{{ route('roles.create') }}" class="btn btn-primary mb-3 mt-4">
+    + Tambah Role
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>
@@ -37,7 +41,4 @@
     </tbody>
 </table>
 
-<a href="{{ route('roles.create') }}" class="btn btn-primary mt-3">
-    + Tambah Role
-</a>
 @endsection
