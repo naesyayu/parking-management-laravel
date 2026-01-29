@@ -67,6 +67,27 @@ class KendaraanController extends Controller
             ->with('success', 'Data kendaraan berhasil diperbarui');
     }
 
+    public function trash()
+    {
+        $kendaraans = Kendaraan::onlyTrashed()
+        ->with(['pemilik', 'tipe'])
+        ->get();
+
+
+        return view('data-kendaraan.trash', compact('kendaraans'));
+    }
+
+    public function restore($id)
+    {
+        $kendaraan = Kendaraan::onlyTrashed()->findOrFail($id);
+        $kendaraan->restore();
+
+
+        return redirect()
+        ->route('data-kendaraan.trash')
+        ->with('success', 'Data kendaraan berhasil dikembalikan');
+    }
+
 
     public function destroy(Kendaraan $data_kendaraan)
     {

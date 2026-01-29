@@ -75,6 +75,27 @@ class MemberController extends Controller
             ->with('success', 'Member berhasil diperbarui');
     }
 
+    public function trash()
+    {
+        $members = Member::onlyTrashed()
+        ->with(['pemilik', 'level'])
+        ->get();
+
+
+        return view('member.trash', compact('members'));
+    }
+
+    public function restore($id)
+    {
+        $member = Member::onlyTrashed()->findOrFail($id);
+        $member->restore();
+
+
+        return redirect()
+        ->route('member.trash')
+        ->with('success', 'Member berhasil dikembalikan');
+    }
+
     public function destroy(Member $member)
     {
         $member->delete(); // soft delete

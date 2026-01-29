@@ -43,7 +43,7 @@ class TransaksiKeluarController extends Controller
             // CARI TRANSAKSI
             $transaksi = TransaksiParkir::with([
                 'kendaraan.tipe',
-                'kendaraan.pemilik', // PENTING: Load pemilik dulu
+                'kendaraan.pemilik',
                 'areaParkir'
             ])
             ->where('kode_tiket', $request->kode_tiket)
@@ -60,6 +60,8 @@ class TransaksiKeluarController extends Controller
             Log::info('Transaksi found', [
                 'id' => $transaksi->id_transaksi,
                 'id_kendaraan' => $transaksi->id_kendaraan,
+                'id_tipe' => $transaksi->kendaraan->id_tipe,
+                'tipe_kendaraan' => $transaksi->kendaraan->tipe->tipe_kendaraan,
                 'has_pemilik' => $transaksi->kendaraan->pemilik ? 'YES' : 'NO',
                 'id_pemilik' => $transaksi->kendaraan->id_pemilik
             ]);
@@ -68,18 +70,11 @@ class TransaksiKeluarController extends Controller
             $waktuMasuk = Carbon::parse($transaksi->waktu_masuk);
             $waktuKeluar = now();
             
-            // PERBAIKAN: Force absolute value untuk handle timezone issues
+            // Force absolute value
             $durasiMenit = abs($waktuKeluar->diffInMinutes($waktuMasuk, false));
+            if ($durasiMenit < 1) { $durasiMenit = 1; }
             
-            // Fallback: minimal 1 menit
-            if ($durasiMenit < 1) {
-                $durasiMenit = 1;
-            }
-            
-            // PERBAIKAN: Konversi ke jam desimal
             $durasiJamDesimal = $durasiMenit / 60;
-            
-            // Untuk tampilan (pembulatan ke atas, minimal 1 jam)
             $durasiJamCeil = max(1, ceil($durasiJamDesimal));
 
             Log::info('Durasi calculated', [
@@ -88,89 +83,73 @@ class TransaksiKeluarController extends Controller
                 'jam_ceil' => $durasiJamCeil
             ]);
 
-            // CARI TARIF YANG SESUAI
-            Log::info('Searching tarif with duration', [
+            // ========================================
+            // PERBAIKAN: QUERY LANGSUNG KE TARIF_PARKIR
+            // Filter berdasarkan DURASI + TIPE KENDARAAN sekaligus!
+            // ========================================
+            
+            $idTipe = $transaksi->kendaraan->id_tipe;
+            
+            Log::info('Searching tarif with duration AND tipe', [
                 'durasi_jam_desimal' => $durasiJamDesimal,
                 'durasi_formatted' => number_format($durasiJamDesimal, 2),
-                'id_tipe' => $transaksi->kendaraan->id_tipe
+                'id_tipe' => $idTipe,
+                'tipe_kendaraan' => $transaksi->kendaraan->tipe->tipe_kendaraan
             ]);
 
-            // Debug: tampilkan semua detail parkir
-            $allDetails = DetailParkir::orderBy('jam_min')->get();
-            Log::info('All detail_parkir in DB:', $allDetails->toArray());
-
-            // PERBAIKAN: Gunakan BETWEEN untuk lebih akurat
-            $detailParkir = DetailParkir::whereRaw('? BETWEEN jam_min AND jam_max', [$durasiJamDesimal])
-                ->orderBy('jam_min', 'asc')
+            // Query dengan JOIN dan filter tipe kendaraan
+            $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                ->where('tarif_parkir.id_tipe', $idTipe)  // ← FILTER TIPE KENDARAAN!
+                ->whereRaw('? BETWEEN detail_parkir.jam_min AND detail_parkir.jam_max', [$durasiJamDesimal])
+                ->orderBy('detail_parkir.jam_min', 'asc')
+                ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
                 ->first();
 
-            Log::info('DetailParkir query result (BETWEEN)', [
-                'found' => $detailParkir ? 'YES' : 'NO',
-                'query' => "{$durasiJamDesimal} BETWEEN jam_min AND jam_max"
-            ]);
-
-            // Jika tidak ketemu dengan BETWEEN, coba dengan <= dan >=
-            if (!$detailParkir) {
-                Log::warning('BETWEEN failed, trying <= and >= with epsilon');
+            // Fallback dengan epsilon jika BETWEEN gagal
+            if (!$tarif) {
+                Log::warning('BETWEEN failed, trying with epsilon');
                 
-                $epsilon = 0.001; // Toleransi untuk floating point
-                $detailParkir = DetailParkir::where('jam_min', '<=', $durasiJamDesimal + $epsilon)
-                    ->where('jam_max', '>=', $durasiJamDesimal - $epsilon)
-                    ->orderBy('jam_min', 'asc')
+                $epsilon = 0.001;
+                $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                    ->where('tarif_parkir.id_tipe', $idTipe)
+                    ->where('detail_parkir.jam_min', '<=', $durasiJamDesimal + $epsilon)
+                    ->where('detail_parkir.jam_max', '>=', $durasiJamDesimal - $epsilon)
+                    ->orderBy('detail_parkir.jam_min', 'asc')
+                    ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
                     ->first();
             }
 
-            // Jika masih tidak ketemu, ambil range TERKECIL sebagai fallback
-            if (!$detailParkir) {
-                Log::warning('No matching range found! Using fallback (SMALLEST range)');
-                $detailParkir = DetailParkir::orderBy('jam_min', 'asc')->first();
+            // Ultimate fallback: ambil range terkecil untuk tipe ini
+            if (!$tarif) {
+                Log::warning('No matching range, using smallest range for this tipe');
+                
+                $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                    ->where('tarif_parkir.id_tipe', $idTipe)
+                    ->orderBy('detail_parkir.jam_min', 'asc')
+                    ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
+                    ->first();
             }
-
-            if (!$detailParkir) {
-                Log::error('No detail_parkir found in database at all!');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Data tarif tidak ditemukan di database'
-                ], 404);
-            }
-
-            Log::info('Detail parkir found', [
-                'id' => $detailParkir->id_tarif_detail,
-                'range' => $detailParkir->jam_min . '-' . $detailParkir->jam_max
-            ]);
-
-            // Cari tarif berdasarkan detail dan tipe kendaraan
-            Log::info('Searching tarif_parkir', [
-                'id_tarif_detail' => $detailParkir->id_tarif_detail,
-                'id_tipe' => $transaksi->kendaraan->id_tipe
-            ]);
-
-            // Debug: tampilkan semua tarif untuk tipe ini
-            $allTarif = TarifParkir::where('id_tipe', $transaksi->kendaraan->id_tipe)->get();
-            Log::info('All tarif for this tipe:', $allTarif->toArray());
-
-            $tarif = TarifParkir::where('id_tarif_detail', $detailParkir->id_tarif_detail)
-                ->where('id_tipe', $transaksi->kendaraan->id_tipe)
-                ->first();
 
             if (!$tarif) {
-                Log::error('Tarif not found!', [
-                    'id_tarif_detail' => $detailParkir->id_tarif_detail,
-                    'id_tipe' => $transaksi->kendaraan->id_tipe
+                Log::error('No tarif found at all for this tipe!', [
+                    'id_tipe' => $idTipe,
+                    'tipe_kendaraan' => $transaksi->kendaraan->tipe->tipe_kendaraan
                 ]);
                 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tarif tidak ditemukan untuk tipe kendaraan ini'
+                    'message' => 'Tarif tidak ditemukan untuk tipe kendaraan ' . $transaksi->kendaraan->tipe->tipe_kendaraan
                 ], 404);
             }
 
-            $totalTarif = $tarif->tarif;
-
             Log::info('Tarif found', [
                 'id_tarif' => $tarif->id_tarif,
-                'tarif' => $totalTarif
+                'id_tarif_detail' => $tarif->id_tarif_detail,
+                'range' => $tarif->jam_min . '-' . $tarif->jam_max,
+                'tarif' => $tarif->tarif
             ]);
+
+            $totalTarif = $tarif->tarif;
 
             // CEK MEMBER DAN HITUNG DISKON
             $member = null;
@@ -178,17 +157,15 @@ class TransaksiKeluarController extends Controller
             $persenDiskon = 0;
             $namaLevel = null;
 
-            // PERBAIKAN: Cek apakah kendaraan punya pemilik
             if ($transaksi->kendaraan->id_pemilik) {
                 Log::info('Checking member for pemilik', [
                     'id_pemilik' => $transaksi->kendaraan->id_pemilik
                 ]);
 
-                // Query member secara eksplisit
                 $member = Member::with('level')
                     ->where('id_pemilik', $transaksi->kendaraan->id_pemilik)
                     ->where('status', 'aktif')
-                    ->whereDate('berlaku_hingga', '>=', now())  // ← Gunakan whereDate
+                    ->whereDate('berlaku_hingga', '>=', now())
                     ->first();
 
                 if ($member) {
@@ -290,37 +267,44 @@ class TransaksiKeluarController extends Controller
             $waktuMasuk = Carbon::parse($transaksi->waktu_masuk);
             $waktuKeluar = now();
             
-            // PERBAIKAN: Force absolute value
             $durasiMenit = abs($waktuKeluar->diffInMinutes($waktuMasuk, false));
             if ($durasiMenit < 1) { $durasiMenit = 1; }
             
             $durasiJamDesimal = $durasiMenit / 60;
             $durasiJamCeil = max(1, ceil($durasiJamDesimal));
 
-            // CARI TARIF
-            $detailParkir = DetailParkir::whereRaw('? BETWEEN jam_min AND jam_max', [$durasiJamDesimal])
-                ->orderBy('jam_min', 'asc')
-                ->first();
-
-            if (!$detailParkir) {
-                $epsilon = 0.001;
-                $detailParkir = DetailParkir::where('jam_min', '<=', $durasiJamDesimal + $epsilon)
-                    ->where('jam_max', '>=', $durasiJamDesimal - $epsilon)
-                    ->orderBy('jam_min', 'asc')
-                    ->first();
-            }
-
-            if (!$detailParkir) {
-                $detailParkir = DetailParkir::orderBy('jam_min', 'asc')->first();  // ← Ambil yang terkecil
-            }
-
-            $tarif = TarifParkir::where('id_tarif_detail', $detailParkir->id_tarif_detail)
-                ->where('id_tipe', $transaksi->kendaraan->id_tipe)
+            // CARI TARIF (dengan tipe kendaraan)
+            $idTipe = $transaksi->kendaraan->id_tipe;
+            
+            $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                ->where('tarif_parkir.id_tipe', $idTipe)
+                ->whereRaw('? BETWEEN detail_parkir.jam_min AND detail_parkir.jam_max', [$durasiJamDesimal])
+                ->orderBy('detail_parkir.jam_min', 'asc')
+                ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
                 ->first();
 
             if (!$tarif) {
+                $epsilon = 0.001;
+                $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                    ->where('tarif_parkir.id_tipe', $idTipe)
+                    ->where('detail_parkir.jam_min', '<=', $durasiJamDesimal + $epsilon)
+                    ->where('detail_parkir.jam_max', '>=', $durasiJamDesimal - $epsilon)
+                    ->orderBy('detail_parkir.jam_min', 'asc')
+                    ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
+                    ->first();
+            }
+
+            if (!$tarif) {
+                $tarif = TarifParkir::join('detail_parkir', 'tarif_parkir.id_tarif_detail', '=', 'detail_parkir.id_tarif_detail')
+                    ->where('tarif_parkir.id_tipe', $idTipe)
+                    ->orderBy('detail_parkir.jam_min', 'asc')
+                    ->select('tarif_parkir.*', 'detail_parkir.jam_min', 'detail_parkir.jam_max')
+                    ->first();
+            }
+
+            if (!$tarif) {
                 DB::rollBack();
-                return back()->with('error', 'Tarif tidak ditemukan');
+                return back()->with('error', 'Tarif tidak ditemukan untuk tipe kendaraan ini');
             }
 
             $totalTarif = $tarif->tarif;
@@ -334,7 +318,7 @@ class TransaksiKeluarController extends Controller
                 $member = Member::with('level')
                     ->where('id_pemilik', $transaksi->kendaraan->id_pemilik)
                     ->where('status', 'aktif')
-                    ->whereDate('berlaku_hingga', '>=', now())  // ← Gunakan whereDate
+                    ->whereDate('berlaku_hingga', '>=', now())
                     ->first();
 
                 if ($member && $member->level) {
@@ -370,6 +354,13 @@ class TransaksiKeluarController extends Controller
             DB::commit();
 
             Log::info('=== PROSES KELUAR SUCCESS ===');
+
+            // Buat object untuk detailParkir dari tarif yang sudah ada
+            $detailParkir = (object)[
+                'id_tarif_detail' => $tarif->id_tarif_detail,
+                'jam_min' => $tarif->jam_min,
+                'jam_max' => $tarif->jam_max
+            ];
 
             // TAMPILKAN STRUK
             return view('pages.parkir.tiket-keluar', [

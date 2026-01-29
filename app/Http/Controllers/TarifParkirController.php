@@ -70,6 +70,31 @@ class TarifParkirController extends Controller
             ->with('success', 'Tarif parkir berhasil diperbarui');
     }
 
+    // 🔹 DATA TERHAPUS (BACKUP)
+    public function trash()
+    {
+        $tarifParkir = TarifParkir::onlyTrashed()
+        ->with(['detailParkir', 'tipeKendaraan'])
+        ->orderBy('id_tarif', 'desc')
+        ->get();
+
+
+        return view('tarif-parkir.trash', compact('tarifParkir'));
+    }
+
+
+    // 🔹 RESTORE DATA
+    public function restore($id)
+    {
+        $tarifParkir = TarifParkir::onlyTrashed()->findOrFail($id);
+        $tarifParkir->restore();
+
+
+        return redirect()
+        ->route('tarif-parkir.trash')
+        ->with('success', 'Tarif parkir berhasil dikembalikan');
+    }
+
     public function destroy($id)
     {
         $tarifParkir = TarifParkir::findOrFail($id);

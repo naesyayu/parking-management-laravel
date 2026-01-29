@@ -18,33 +18,69 @@ Route::get('/', function () {
     return view('app');
 });
 
+//----- USER -----//
 Route::resource('user', UserController::class);
 Route::get('user/{user}/password', [UserController::class, 'editPassword'])->name('user.password.edit');
 Route::put('user/{user}/password', [UserController::class, 'updatePassword'])->name('user.password.update');
+Route::get('/user-trash', [UserController::class, 'trash'])
+->name('user.trash');
+Route::post('/user/{id}/restore', [UserController::class, 'restore'])
+->name('user.restore');
 
+//----- TIPE KENDARAAN -----//
 Route::resource('tipe-kendaraan', TipeKendaraanController::class);
 
+//----- PEMILIK ------//
 Route::resource('pemilik', PemilikController::class);
-// halaman trash
 Route::get('/pemilik-trash', [PemilikController::class, 'trash'])
     ->name('pemilik.trash');
-// restore data
 Route::post('/pemilik/{id}/restore', [PemilikController::class, 'restore'])
     ->name('pemilik.restore');
 
+//----- AREA PARKIR -----//
 Route::resource('area-parkir', AreaParkirController::class);
+Route::get('/area-parkir-trash', [AreaParkirController::class, 'trash'])
+    ->name('area-parkir.trash');
+Route::post('/area-parkir/{id}/restore', [AreaParkirController::class, 'restore'])
+    ->name('area-parkir.restore');
 
+//----- KAPASITAS PARKIR -----//
 Route::resource('area-kapasitas', AreaKapasitasController::class);
 
+//----- KENDARAAN -----//
 Route::resource('data-kendaraan', KendaraanController::class);
+Route::get('/data-kendaraan-trash', [KendaraanController::class, 'trash'])
+    ->name('data-kendaraan.trash');
+Route::post('/data-kendaraan/{id}/restore', [KendaraanController::class, 'restore'])
+    ->name('data-kendaraan.restore');
 
+//----- MEMBER -----//
 Route::resource('member', MemberController::class);
+Route::get('/member-trash', [MemberController::class, 'trash'])
+    ->name('member.trash');
+Route::post('/member/{id}/restore', [MemberController::class, 'restore'])
+    ->name('member.restore');
 
+//----- TARIF PARKIR -----//
 Route::resource('tarif-parkir', TarifParkirController::class);
+Route::get('/tarif-parkir-trash', [TarifParkirController::class, 'trash'])
+    ->name('tarif-parkir.trash');
+Route::post('/tarif-parkir/{id}/restore', [TarifParkirController::class, 'restore'])
+    ->name('tarif-parkir.restore');
 
+//----- METODE PEMBAYARAN -----//
 Route::resource('metode-pembayaran', MetodePembayaranController::class);
+Route::get('/metode-pembayaran-trash', [MetodePembayaranController::class, 'trash'])
+    ->name('metode-pembayaran.trash');
+Route::post('/metode-pembayaran/{id}/restore', [MetodePembayaranController::class, 'restore'])
+    ->name('metode-pembayaran.restore');
 
+//----- ROLE USER -----//
 Route::resource('roles', RoleController::class);
+Route::get('/roles-trash', [RoleController::class, 'trash'])
+->name('roles.trash');
+Route::post('/roles/{id}/restore', [RoleController::class, 'restore'])
+->name('roles.restore');
 
 //------- SCAN QR KODE MASUK -------//
 

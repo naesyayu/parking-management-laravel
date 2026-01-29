@@ -11,6 +11,10 @@
     + Tambah Role
 </a>
 
+<a href="{{ route('user.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data Role User
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>

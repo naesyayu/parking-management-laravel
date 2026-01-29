@@ -7,6 +7,10 @@
    + Tambah Area
 </a>
 
+<a href="{{ route('area-parkir.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data Area Parkir
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>

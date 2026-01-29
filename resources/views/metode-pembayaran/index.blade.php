@@ -7,9 +7,12 @@
 <div class="alert alert-success">{{ session('success') }}</div>
 @endif
 
-<a href="{{ route('metode-pembayaran.create') }}"
-   class="btn btn-primary mb- 3 mt-4">
+<a href="{{ route('metode-pembayaran.create') }}" class="btn btn-primary mb- 3 mt-4">
     + Tambah Metode Pembayaran
+</a>
+
+<a href="{{ route('metode-pembayaran.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data Metode Pembayaran
 </a>
 
 <table class="table table-bordered mt-4">

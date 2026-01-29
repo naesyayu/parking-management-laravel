@@ -13,6 +13,10 @@
     + Tambah User
 </a>
 
+<a href="{{ route('user.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data User
+</a>
+
 <table class="table table-bordered">
     <thead>
         <tr>

@@ -52,6 +52,30 @@ class MetodePembayaranController extends Controller
             ->with('success', 'Metode pembayaran berhasil diperbarui');
     }
 
+    // 🔹 BACKUP / TRASH
+    public function trash()
+    {
+        $metodePembayaran = MetodePembayaran::onlyTrashed()
+        ->orderBy('id_metode', 'desc')
+        ->get();
+
+
+        return view('metode-pembayaran.trash', compact('metodePembayaran'));
+    }
+
+
+    // 🔹 RESTORE
+    public function restore($id)
+    {
+        $metodePembayaran = MetodePembayaran::onlyTrashed()->findOrFail($id);
+        $metodePembayaran->restore();
+
+
+        return redirect()
+        ->route('metode-pembayaran.trash')
+        ->with('success', 'Metode pembayaran berhasil dikembalikan');
+    }
+
     public function destroy(MetodePembayaran $metode_pembayaran)
     {
         $metode_pembayaran->delete();
@@ -59,4 +83,5 @@ class MetodePembayaranController extends Controller
         return redirect()->route('metode-pembayaran.index')
             ->with('success', 'Metode pembayaran berhasil dihapus');
     }
+
 }

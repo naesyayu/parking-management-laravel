@@ -52,6 +52,30 @@ class RoleController extends Controller
             ->with('success', 'Role berhasil diperbarui');
     }
 
+    // 🔹 BACKUP / TRASH
+    public function trash()
+    {
+        $roles = Role::onlyTrashed()
+        ->orderBy('id_role', 'desc')
+        ->get();
+
+
+        return view('roles.trash', compact('roles'));
+    }
+
+
+    // 🔹 RESTORE
+    public function restore($id)
+    {
+        $role = Role::onlyTrashed()->findOrFail($id);
+        $role->restore();
+
+
+        return redirect()
+        ->route('roles.trash')
+        ->with('success', 'Role berhasil dikembalikan');
+    }
+
     public function destroy(Role $role)
     {
         $role->delete();

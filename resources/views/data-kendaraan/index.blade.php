@@ -7,6 +7,10 @@
     + Tambah Kendaraan
 </a>
 
+<a href="{{ route('data-kendaraan.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data Kendaraan
+</a>
+
 <table class="table table-bordered mt-3">
     <thead>
         <tr>

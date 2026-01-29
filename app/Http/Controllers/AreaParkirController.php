@@ -74,6 +74,27 @@ class AreaParkirController extends Controller
             ->with('success', 'Area parkir berhasil diperbarui');
     }
 
+    public function trash()
+    {
+        $areas = AreaParkir::onlyTrashed()
+        ->orderBy('id_area', 'desc')
+        ->get();
+
+
+        return view('area-parkir.trash', compact('areas'));
+    }
+
+    public function restore($id)
+    {
+        $area = AreaParkir::onlyTrashed()->findOrFail($id);
+        $area->restore();
+
+
+        return redirect()
+        ->route('area-parkir.trash')
+        ->with('success', 'Area parkir berhasil dikembalikan');
+    }
+
     public function destroy(AreaParkir $area_parkir)
     {
         if ($area_parkir->foto_lokasi) {

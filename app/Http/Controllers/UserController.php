@@ -64,6 +64,26 @@ class UserController extends Controller
             ->with('success', 'User berhasil diperbarui');
     }
 
+    // 🔹 DATA TERHAPUS (BACKUP)
+    public function trash()
+    {
+        $user = User::onlyTrashed()->with('role')->get();
+        return view('user.trash', compact('user'));
+    }
+
+
+    // 🔹 RESTORE USER
+    public function restore($id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+        $user->restore();
+
+
+        return redirect()
+        ->route('user.trash')
+        ->with('success', 'User berhasil dikembalikan');
+    }
+
 
     public function destroy(User $user)
     {

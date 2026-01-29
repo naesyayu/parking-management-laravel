@@ -12,7 +12,7 @@
 </a>
 
 <a href="{{ route('pemilik.trash') }}" class="btn btn-secondary mb-3 mt-4">
-    Data Terhapus
+    Backup Data Pemilik
 </a>
 
 <table class="table table-bordered">
