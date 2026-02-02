@@ -20,6 +20,8 @@ class TransaksiParkir extends Model
         'waktu_keluar',
         'durasi_jam',
         'id_tarif',
+        'diskon',
+        'total_bayar',
         'id_user',
         'id_member',
         'id_metode',
@@ -29,6 +31,8 @@ class TransaksiParkir extends Model
     protected $casts = [
         'waktu_masuk' => 'datetime',
         'waktu_keluar' => 'datetime',
+        'diskon' => 'decimal:2',        
+        'total_bayar' => 'decimal:2',
     ];
 
     /**
@@ -71,5 +75,75 @@ class TransaksiParkir extends Model
     public function metodePembayaran()
     {
     return $this->belongsTo(MetodePembayaran::class, 'id_metode', 'id_metode');
+    }
+
+    /**
+     * =====================
+     * RELASI KE ACTIVITY LOG
+     * =====================
+     */
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class, 'id_transaksi', 'id_transaksi');
+    }
+
+    /**
+     * =============================================
+     * SCOPES
+     * =============================================
+     */
+
+    /**
+     * Scope untuk transaksi hari ini
+     */
+    public function scopeToday($query)
+    {
+        return $query->whereDate('waktu_keluar', today());
+    }
+
+    /**
+     * Scope untuk transaksi berdasarkan status
+     */
+    public function scopeStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    /**
+     * Scope untuk transaksi dalam rentang tanggal
+     */
+    public function scopeDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('waktu_keluar', [$startDate, $endDate]);
+    }
+
+    /**
+     * =============================================
+     * ACCESSOR & MUTATOR
+     * =============================================
+     */
+
+    /**
+     * Format total bayar ke rupiah
+     */
+    public function getTotalBayarFormattedAttribute()
+    {
+        return 'Rp ' . number_format($this->total_bayar, 0, ',', '.');
+    }
+
+    /**
+     * Format diskon ke rupiah
+     */
+    public function getDiskonFormattedAttribute()
+    {
+        return 'Rp ' . number_format($this->diskon, 0, ',', '.');
+    }
+
+    /**
+     * Get tarif asli (sebelum diskon)
+     */
+    public function getTarifAsliAttribute()
+    {
+        return $this->total_bayar + $this->diskon;
     }
 }

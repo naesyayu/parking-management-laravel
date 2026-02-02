@@ -17,9 +17,18 @@ return new class extends Migration
             $table->id('id_user'); // Primary key dengan nama id_user
             $table->string('username', 50)->unique()->collation('utf8mb4_0900_ai_ci');
             $table->string('password', 255)->collation('utf8mb4_0900_ai_ci');
+            $table->unsignedBigInteger('id_role')->nullable();
             $table->enum('status', ['aktif', 'nonaktif'])->default('aktif')->collation('utf8mb4_0900_ai_ci');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->nullable()->default(null);
+
+            $table->softDeletes();
+
+            $table->foreign('id_role')
+              ->references('id_role')
+              ->on('roles')
+              ->onUpdate('cascade')
+              ->onDelete('restrict');
             
             // Set engine dan charset
             $table->engine = 'InnoDB';
