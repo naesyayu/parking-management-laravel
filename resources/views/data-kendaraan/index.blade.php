@@ -24,26 +24,27 @@
     </thead>
     <tbody>
         @foreach($kendaraans as $k)
-        <tr>
-            <td>{{ $loop->iteration }}</td>
-            <td>{{ $k->plat_nomor }}</td>
-            <td>{{ $k->pemilik?->nama ?? '-' }}</td>
-            <td>{{ $k->tipe->tipe_kendaraan }}</td>
-            <td>{{ $k->status }}</td>
-            <td>
-                <a href="{{ route('data-kendaraan.edit', $k->id_kendaraan) }}"
-                   class="btn btn-warning btn-sm">Edit</a>
+            <tr>
+                <td>{{ $loop->iteration }}</td>
+                <td>{{ $k->plat_nomor }}</td>
+                <td>{{ $k->pemilik?->nama ?? '-' }}</td>
+                <td>{{ $k->tipe->tipe_kendaraan }}</td>
+                <td>{{ $k->status }}</td>
+                <td>
+                    <a href="{{ route('data-kendaraan.edit', $k->id_kendaraan) }}"
+                    class="btn btn-warning btn-sm">Edit</a>
 
-                <form action="{{ route('data-kendaraan.destroy', $k->id_kendaraan) }}"
-                      method="POST" class="d-inline">
-                    @csrf @method('DELETE')
-                    <button class="btn btn-danger btn-sm"
-                            onclick="return confirm('Hapus data?')">
-                        Hapus
-                    </button>
-                </form>
-            </td>
-        </tr>
+                    <form action="{{ route('data-kendaraan.destroy', $k->id_kendaraan) }}"
+                        method="POST" class="d-inline">
+                        @csrf 
+                        @method('DELETE')
+                        <button class="btn btn-danger btn-sm"
+                                onclick="return confirm('Hapus data?')">
+                            Hapus
+                        </button>
+                    </form>
+                </td>
+            </tr>
         @endforeach
     </tbody>
 </table>

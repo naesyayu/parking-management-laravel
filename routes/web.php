@@ -13,6 +13,7 @@ use App\Http\Controllers\KendaraanController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\TarifParkirController;
 use App\Http\Controllers\MetodePembayaranController;
+use App\Http\Controllers\DetailParkirController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TransaksiMasukController;
 use App\Http\Controllers\TransaksiKeluarController;
@@ -61,9 +62,9 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // =========================================
-    // USER MANAGEMENT (Admin & Owner)
+    // USER MANAGEMENT (Admin)
     // =========================================
-    Route::middleware(['check.role:admin,owner'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         Route::resource('user', UserController::class);
         Route::get('user/{user}/password', [UserController::class, 'editPassword'])->name('user.password.edit');
         Route::put('user/{user}/password', [UserController::class, 'updatePassword'])->name('user.password.update');
@@ -77,9 +78,9 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // =========================================
-    // MASTER DATA (Admin & Owner)
+    // MASTER DATA CRUD (Admin)
     // =========================================
-    Route::middleware(['check.role:admin,owner'])->group(function () {
+    Route::middleware(['check.role:admin'])->group(function () {
         
         // TIPE KENDARAAN
         Route::resource('tipe-kendaraan', TipeKendaraanController::class);
@@ -96,6 +97,13 @@ Route::middleware(['auth'])->group(function () {
         
         // KAPASITAS PARKIR
         Route::resource('area-kapasitas', AreaKapasitasController::class);
+
+        // DETAIL DURASI PARKIR
+        Route::resource('detail-parkir', DetailParkirController::class);
+        Route::get('detail-parkir-trash', [DetailParkirController::class, 'trash'])
+            ->name('detail-parkir.trash');
+        Route::post('detail-parkir/{id}/restore', [DetailParkirController::class, 'restore'])
+            ->name('detail-parkir.restore');
         
         // KENDARAAN
         Route::resource('data-kendaraan', KendaraanController::class);
@@ -119,9 +127,9 @@ Route::middleware(['auth'])->group(function () {
     });
     
     // =========================================
-    // TRANSAKSI (Petugas & Owner)
+    // TRANSAKSI (Petugas)
     // =========================================
-    Route::middleware(['check.role:petugasparkir,petugas,owner'])->group(function () {
+    Route::middleware(['check.role:petugasparkir,petugas'])->group(function () {
         
         // PARKIR MASUK
         Route::get('/parkir/masuk', [TransaksiMasukController::class, 'index'])->name('parkir.masuk');

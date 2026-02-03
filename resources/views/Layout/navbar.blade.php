@@ -2,7 +2,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
-/* Navbar Modern dengan Bootstrap */
 .navbar-custom {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -194,6 +193,7 @@
                             <li><h6 class="dropdown-header"><i class="fas fa-map-marked-alt me-2"></i> Area & Tarif</h6></li>
                             <li><a class="dropdown-item" href="{{ route('area-parkir.index') }}"><i class="fas fa-map-marker-alt me-2"></i> Area Parkir</a></li>
                             <li><a class="dropdown-item" href="{{ route('area-kapasitas.index') }}"><i class="fas fa-th me-2"></i> Kapasitas Area Parkir</a></li>
+                            <li><a class="dropdown-item" href="{{ route('detail-parkir.index') }}"><i class="fa-solid fa-clock me-2"></i> Detail Durasi Parkir</a></li>
                             <li><a class="dropdown-item" href="{{ route('tarif-parkir.index') }}"><i class="fas fa-money-bill me-2"></i> Tarif Parkir</a></li>
                             <li><hr class="dropdown-divider"></li>
                             

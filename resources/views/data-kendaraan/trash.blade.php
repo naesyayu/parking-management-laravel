@@ -47,7 +47,7 @@
         @empty
         <tr>
             <td colspan="7" class="text-center">
-                Tidak ada data terhapus
+                Tidak Ada Data Kendaraan Terhapus
             </td>
         </tr>
         @endforelse

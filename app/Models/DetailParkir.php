@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DetailParkir extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'detail_parkir';
     protected $primaryKey = 'id_tarif_detail';
 
@@ -15,6 +18,8 @@ class DetailParkir extends Model
         'jam_min',
         'jam_max',
     ];
+
+    protected $dates = ['deleted_at'];
 
     public function tarifParkir()
     {
