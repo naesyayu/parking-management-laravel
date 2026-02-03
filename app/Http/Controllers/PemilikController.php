@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Pemilik;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+use App\Traits\ActivityLogger;
 
 class PemilikController extends Controller
 {
+    use ActivityLogger;
+    
     public function index()
     {
         $pemilik = Pemilik::all();
@@ -27,7 +30,9 @@ class PemilikController extends Controller
             'alamat' => 'required',
         ]);
 
-        Pemilik::create($request->all());
+        $pemilik = Pemilik::create($request->all());
+        
+        $this->logCreate($pemilik, 'pemilik');
 
         return redirect()->route('pemilik.index')
             ->with('success', 'Pemilik berhasil ditambahkan');
@@ -46,7 +51,11 @@ class PemilikController extends Controller
             'alamat' => 'required',
         ]);
 
+        $originalData = $pemilik->toArray();
+        
         $pemilik->update($request->all());
+        
+        $this->logUpdate($pemilik, 'pemilik', $originalData);
 
         return redirect()->route('pemilik.index')
             ->with('success', 'Pemilik berhasil diperbarui');
@@ -54,29 +63,29 @@ class PemilikController extends Controller
 
     public function destroy(Pemilik $pemilik)
     {
+        $this->logDelete($pemilik, 'pemilik');
+        
         $pemilik->delete(); // soft delete
 
         return redirect()->route('pemilik.index')
             ->with('success', 'Pemilik berhasil dihapus');
     }
 
-    // 🔹 HALAMAN DATA TERHAPUS
     public function trash()
     {
-    $pemilik = Pemilik::onlyTrashed()->get();
-    return view('pemilik.trash', compact('pemilik'));
+        $pemilik = Pemilik::onlyTrashed()->get();
+        return view('pemilik.trash', compact('pemilik'));
     }
 
-
-    // 🔹 RESTORE DATA
     public function restore($id)
     {
-    $pemilik = Pemilik::onlyTrashed()->findOrFail($id);
-    $pemilik->restore();
+        $pemilik = Pemilik::onlyTrashed()->findOrFail($id);
+        $pemilik->restore();
+        
+        $this->logRestore($pemilik, 'pemilik');
 
-
-    return redirect()
-    ->route('pemilik.trash')
-    ->with('success', 'Data berhasil dikembalikan');
+        return redirect()
+        ->route('pemilik.trash')
+        ->with('success', 'Data berhasil dikembalikan');
     }
 }

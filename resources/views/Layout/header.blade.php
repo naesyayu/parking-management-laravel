@@ -9,17 +9,8 @@
        role="button"
        aria-controls="offcanvas">
       <i class="fa-solid fa-square-parking me-2"></i>
-      Parking Management
+      Parking Management System
     </a>
-
-    <div class="d-flex align-items-center me-5">
-      <a href="#"
-         class="text-white text-decoration-none d-flex align-items-center"
-         style="font-size: 21px;">
-        <i class="fas fa-user-circle me-2" style="font-size: 37px;"></i>
-        <span>Admin</span>
-      </a>
-    </div>
 
   </div>
 </nav>

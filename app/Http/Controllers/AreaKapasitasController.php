@@ -6,9 +6,12 @@ use App\Models\AreaKapasitas;
 use App\Models\AreaParkir;
 use App\Models\TipeKendaraan;
 use Illuminate\Http\Request;
+use App\Traits\ActivityLogger;
 
 class AreaKapasitasController extends Controller
 {
+    use ActivityLogger;
+    
     public function index()
     {
         $data = AreaKapasitas::with(['area', 'tipe'])->get();
@@ -31,10 +34,19 @@ class AreaKapasitasController extends Controller
             'kapasitas' => 'required|integer|min:0',
         ]);
 
-        AreaKapasitas::create([
+        $areaKapasitas = AreaKapasitas::create([
             'id_area' => $request->id_area,
             'id_tipe' => $request->id_tipe,
             'kapasitas' => $request->kapasitas,
+        ]);
+        
+        // Load relasi
+        $areaKapasitas->load(['area', 'tipe']);
+        
+        $this->logCreate($areaKapasitas, 'area kapasitas', [
+            'area' => $areaKapasitas->area->lokasi ?? null,
+            'tipe' => $areaKapasitas->tipe->tipe_kendaraan ?? null,
+            'kapasitas' => $areaKapasitas->kapasitas,
         ]);
 
         return redirect()
@@ -64,10 +76,20 @@ class AreaKapasitasController extends Controller
 
         $area_kapasita = AreaKapasitas::findOrFail($id);
 
+        $originalData = $area_kapasita->toArray();
+        
         $area_kapasita->update([
             'id_area' => $request->id_area,
             'id_tipe' => $request->id_tipe,
             'kapasitas' => $request->kapasitas,
+        ]);
+        
+        // Refresh relasi
+        $area_kapasita->load(['area', 'tipe']);
+        
+        $this->logUpdate($area_kapasita, 'area kapasitas', $originalData, [
+            'area' => $area_kapasita->area->lokasi ?? null,
+            'tipe' => $area_kapasita->tipe->tipe_kendaraan ?? null,
         ]);
 
         return redirect()
@@ -78,6 +100,16 @@ class AreaKapasitasController extends Controller
     public function destroy($id)
     {
         $area_kapasita = AreaKapasitas::findOrFail($id);
+        
+        // Load relasi sebelum delete
+        $area_kapasita->load(['area', 'tipe']);
+        
+        $this->logDelete($area_kapasita, 'area kapasitas', [
+            'area' => $area_kapasita->area->lokasi ?? null,
+            'tipe' => $area_kapasita->tipe->tipe_kendaraan ?? null,
+            'kapasitas' => $area_kapasita->kapasitas,
+        ]);
+        
         $area_kapasita->delete(); // HARD DELETE
 
         return redirect()

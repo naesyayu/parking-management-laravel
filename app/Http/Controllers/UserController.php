@@ -7,9 +7,12 @@ use App\Models\Role;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Traits\ActivityLogger;
 
 class UserController extends Controller
 {
+    use ActivityLogger;
+    
     public function index()
     {
         $user = User::with('role')->get();
@@ -30,11 +33,18 @@ class UserController extends Controller
             'id_role' => 'required',
         ]);
 
-        User::create([
+        $user = User::create([
             'username' => $request->username,
             'password' => Hash::make($request->password),
             'id_role' => $request->id_role,
             'status' => 'aktif',
+        ]);
+        
+        // Load relasi
+        $user->load('role');
+        
+        $this->logCreate($user, 'user', [
+            'role' => $user->role->role_user ?? null,
         ]);
 
         return redirect()->route('user.index')->with('success', 'User berhasil ditambahkan');
@@ -54,40 +64,59 @@ class UserController extends Controller
             'status' => 'required',
         ]);
 
+        $originalData = $user->toArray();
+        
         $user->update([
             'username' => $request->username,
             'id_role' => $request->id_role,
             'status' => $request->status,
+        ]);
+        
+        // Refresh relasi
+        $user->load('role');
+        
+        $this->logUpdate($user, 'user', $originalData, [
+            'role' => $user->role->role_user ?? null,
         ]);
 
         return redirect()->route('user.index')
             ->with('success', 'User berhasil diperbarui');
     }
 
-    // 🔹 DATA TERHAPUS (BACKUP)
     public function trash()
     {
         $user = User::onlyTrashed()->with('role')->get();
         return view('user.trash', compact('user'));
     }
 
-
-    // 🔹 RESTORE USER
     public function restore($id)
     {
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
-
+        
+        // Load relasi
+        $user->load('role');
+        
+        $this->logRestore($user, 'user', [
+            'role' => $user->role->role_user ?? null,
+        ]);
 
         return redirect()
         ->route('user.trash')
         ->with('success', 'User berhasil dikembalikan');
     }
 
-
     public function destroy(User $user)
     {
+        // Load relasi sebelum delete
+        $user->load('role');
+        
+        $this->logDelete($user, 'user', [
+            'role' => $user->role->role_user ?? null,
+        ]);
+        
         $user->delete();
+        
         return redirect()->route('user.index')->with('success', 'User berhasil dihapus');
     }
 
@@ -106,6 +135,14 @@ class UserController extends Controller
         $user->update([
             'password' => Hash::make($request->password),
         ]);
+        
+        // LOG EDIT PASSWORD (langsung pakai ActivityLog::log)
+        \App\Models\ActivityLog::log(
+            'edit_password', 
+            'Edit password user: ' . $user->username,
+            null,
+            ['user_id' => $user->id_user]
+        );
 
         return redirect()->route('user.index')->with('success', 'Password berhasil diubah');
     }

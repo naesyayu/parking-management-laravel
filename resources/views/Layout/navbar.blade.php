@@ -119,18 +119,12 @@
 <nav class="navbar navbar-expand-lg navbar-custom shadow-sm">
     <div class="container-fluid">
         
-        {{-- Brand --}}
-        <a class="navbar-brand text-white fw-bold" href="{{ route('dashboard.index') }}">
-            <i class="fas fa-parking me-2"></i>
-            Parking System
-        </a>
-        
         {{-- Toggle Button untuk Mobile --}}
         <button class="navbar-toggler border-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
         
-        <div class="collapse navbar-collapse" id="navbarMain">
+        <div class="collapse navbar-collapse ms-2" id="navbarMain">
             <ul class="nav navbar-nav me-auto mb-2 mb-lg-0">
                 
                 {{-- Dashboard --}}

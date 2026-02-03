@@ -6,9 +6,12 @@ use App\Models\Kendaraan;
 use App\Models\Pemilik;
 use App\Models\TipeKendaraan;
 use Illuminate\Http\Request;
+use App\Traits\ActivityLogger; // ← IMPORT
 
 class KendaraanController extends Controller
 {
+    use ActivityLogger; // ← USE TRAIT
+    
     public function index()
     {
         $kendaraans = Kendaraan::with(['pemilik', 'tipe'])->get();
@@ -32,7 +35,13 @@ class KendaraanController extends Controller
             'status' => 'required|in:aktif,nonaktif',
         ]);
 
-        Kendaraan::create($request->all());
+        $kendaraan = Kendaraan::create($request->all());
+        
+        // ← LOG ACTIVITY
+        $this->logCreate($kendaraan, 'kendaraan', [
+            'tipe' => $kendaraan->tipe->tipe_kendaraan ?? null,
+            'pemilik' => $kendaraan->pemilik->nama ?? 'Tidak ada pemilik',
+        ]);
 
         return redirect()->route('data-kendaraan.index')
             ->with('success', 'Data kendaraan berhasil ditambahkan');
@@ -55,11 +64,23 @@ class KendaraanController extends Controller
             'status'     => 'required|in:aktif,nonaktif',
         ]);
 
+        // Simpan data original untuk track changes
+        $originalData = $data_kendaraan->toArray();
+
         $data_kendaraan->update([
             'plat_nomor' => $request->plat_nomor,
             'id_pemilik' => $request->id_pemilik,
             'id_tipe'    => $request->id_tipe,
             'status'     => $request->status,
+        ]);
+        
+        // Refresh relasi
+        $data_kendaraan->load(['pemilik', 'tipe']);
+        
+        // ← LOG ACTIVITY
+        $this->logUpdate($data_kendaraan, 'kendaraan', $originalData, [
+            'tipe' => $data_kendaraan->tipe->tipe_kendaraan ?? null,
+            'pemilik' => $data_kendaraan->pemilik->nama ?? 'Tidak ada pemilik',
         ]);
 
         return redirect()
@@ -73,7 +94,6 @@ class KendaraanController extends Controller
         ->with(['pemilik', 'tipe'])
         ->get();
 
-
         return view('data-kendaraan.trash', compact('kendaraans'));
     }
 
@@ -81,17 +101,33 @@ class KendaraanController extends Controller
     {
         $kendaraan = Kendaraan::onlyTrashed()->findOrFail($id);
         $kendaraan->restore();
-
+        
+        // Load relasi
+        $kendaraan->load(['pemilik', 'tipe']);
+        
+        // ← LOG ACTIVITY
+        $this->logRestore($kendaraan, 'kendaraan', [
+            'tipe' => $kendaraan->tipe->tipe_kendaraan ?? null,
+        ]);
 
         return redirect()
         ->route('data-kendaraan.trash')
         ->with('success', 'Data kendaraan berhasil dikembalikan');
     }
 
-
     public function destroy(Kendaraan $data_kendaraan)
     {
+        // Load relasi sebelum delete
+        $data_kendaraan->load(['pemilik', 'tipe']);
+        
+        // ← LOG ACTIVITY (SEBELUM DELETE!)
+        $this->logDelete($data_kendaraan, 'kendaraan', [
+            'tipe' => $data_kendaraan->tipe->tipe_kendaraan ?? null,
+            'pemilik' => $data_kendaraan->pemilik->nama ?? 'Tidak ada pemilik',
+        ]);
+        
         $data_kendaraan->delete(); // soft delete
+        
         return redirect()->route('data-kendaraan.index')
             ->with('success', 'Data kendaraan berhasil dihapus');
     }

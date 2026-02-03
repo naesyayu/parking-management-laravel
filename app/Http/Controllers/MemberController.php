@@ -6,9 +6,12 @@ use App\Models\Member;
 use App\Models\Pemilik;
 use App\Models\MemberLevel;
 use Illuminate\Http\Request;
+use App\Traits\ActivityLogger; 
 
 class MemberController extends Controller
 {
+    use ActivityLogger; 
+    
     public function index()
     {
         $members = Member::with(['pemilik', 'level'])->get();
@@ -33,12 +36,22 @@ class MemberController extends Controller
             'status'          => 'required|in:aktif,expired',
         ]);
 
-        Member::create([
+        $member = Member::create([
             'id_pemilik'     => $request->id_pemilik,
             'id_level'       => $request->id_level,
             'berlaku_mulai'  => $request->berlaku_mulai,
             'berlaku_hingga' => $request->berlaku_hingga,
             'status'         => $request->status,
+        ]);
+        
+        // Load relasi
+        $member->load(['pemilik', 'level']);
+        
+        // ← LOG ACTIVITY
+        $this->logCreate($member, 'member', [
+            'pemilik' => $member->pemilik->nama ?? null,
+            'level' => $member->level->nama_level ?? null,
+            'berlaku_hingga' => $member->berlaku_hingga,
         ]);
 
         return redirect()->route('member.index')
@@ -63,12 +76,24 @@ class MemberController extends Controller
             'status'          => 'required|in:aktif,expired',
         ]);
 
+        // Simpan data original
+        $originalData = $member->toArray();
+
         $member->update([
             'id_pemilik'     => $request->id_pemilik,
             'id_level'       => $request->id_level,
             'berlaku_mulai'  => $request->berlaku_mulai,
             'berlaku_hingga' => $request->berlaku_hingga,
             'status'         => $request->status,
+        ]);
+        
+        // Refresh relasi
+        $member->load(['pemilik', 'level']);
+        
+        // ← LOG ACTIVITY
+        $this->logUpdate($member, 'member', $originalData, [
+            'pemilik' => $member->pemilik->nama ?? null,
+            'level' => $member->level->nama_level ?? null,
         ]);
 
         return redirect()->route('member.index')
@@ -81,7 +106,6 @@ class MemberController extends Controller
         ->with(['pemilik', 'level'])
         ->get();
 
-
         return view('member.trash', compact('members'));
     }
 
@@ -89,7 +113,15 @@ class MemberController extends Controller
     {
         $member = Member::onlyTrashed()->findOrFail($id);
         $member->restore();
-
+        
+        // Load relasi
+        $member->load(['pemilik', 'level']);
+        
+        // ← LOG ACTIVITY
+        $this->logRestore($member, 'member', [
+            'pemilik' => $member->pemilik->nama ?? null,
+            'level' => $member->level->nama_level ?? null,
+        ]);
 
         return redirect()
         ->route('member.trash')
@@ -98,7 +130,17 @@ class MemberController extends Controller
 
     public function destroy(Member $member)
     {
+        // Load relasi sebelum delete
+        $member->load(['pemilik', 'level']);
+        
+        // ← LOG ACTIVITY (SEBELUM DELETE!)
+        $this->logDelete($member, 'member', [
+            'pemilik' => $member->pemilik->nama ?? null,
+            'level' => $member->level->nama_level ?? null,
+        ]);
+        
         $member->delete(); // soft delete
+        
         return redirect()->route('member.index')
             ->with('success', 'Member berhasil dihapus');
     }

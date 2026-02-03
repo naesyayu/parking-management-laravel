@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\AreaParkir;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Traits\ActivityLogger;
 
 class AreaParkirController extends Controller
 {
+    use ActivityLogger;
+    
     public function index()
     {
         $areas = AreaParkir::all();
@@ -33,10 +36,14 @@ class AreaParkirController extends Controller
                 ->store('area_parkir', 'public');
         }
 
-        AreaParkir::create([
+        $areaParkir = AreaParkir::create([
             'kode_area' => $request->kode_area,
             'lokasi' => $request->lokasi,
             'foto_lokasi' => $fotoPath,
+        ]);
+        
+        $this->logCreate($areaParkir, 'area parkir', [
+            'has_foto' => $fotoPath ? 'Ya' : 'Tidak',
         ]);
 
         return redirect()->route('area-parkir.index')
@@ -56,6 +63,8 @@ class AreaParkirController extends Controller
             'foto_lokasi' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
+        $originalData = $area_parkir->toArray();
+        
         if ($request->hasFile('foto_lokasi')) {
             if ($area_parkir->foto_lokasi) {
                 Storage::disk('public')->delete($area_parkir->foto_lokasi);
@@ -69,6 +78,10 @@ class AreaParkirController extends Controller
             'kode_area' => $request->kode_area,
             'lokasi' => $request->lokasi,
         ]);
+        
+        $this->logUpdate($area_parkir, 'area parkir', $originalData, [
+            'foto_updated' => $request->hasFile('foto_lokasi') ? 'Ya' : 'Tidak',
+        ]);
 
         return redirect()->route('area-parkir.index')
             ->with('success', 'Area parkir berhasil diperbarui');
@@ -80,7 +93,6 @@ class AreaParkirController extends Controller
         ->orderBy('id_area', 'desc')
         ->get();
 
-
         return view('area-parkir.trash', compact('areas'));
     }
 
@@ -88,7 +100,8 @@ class AreaParkirController extends Controller
     {
         $area = AreaParkir::onlyTrashed()->findOrFail($id);
         $area->restore();
-
+        
+        $this->logRestore($area, 'area parkir');
 
         return redirect()
         ->route('area-parkir.trash')
@@ -97,6 +110,10 @@ class AreaParkirController extends Controller
 
     public function destroy(AreaParkir $area_parkir)
     {
+        $this->logDelete($area_parkir, 'area parkir', [
+            'has_foto' => $area_parkir->foto_lokasi ? 'Ya' : 'Tidak',
+        ]);
+        
         if ($area_parkir->foto_lokasi) {
             Storage::disk('public')->delete($area_parkir->foto_lokasi);
         }

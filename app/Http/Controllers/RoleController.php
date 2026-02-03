@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Role;
 use Illuminate\Http\Request;
+use App\Traits\ActivityLogger;
 
 class RoleController extends Controller
 {
+     use ActivityLogger;
+
     public function index()
     {
         $roles = Role::all();
@@ -24,9 +27,11 @@ class RoleController extends Controller
             'role_user' => 'required|unique:roles,role_user',
         ]);
 
-        Role::create([
+        $role = Role::create([
             'role_user' => $request->role_user,
         ]);
+
+        $this->logCreate($role, 'role');
 
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil ditambahkan');
@@ -44,13 +49,18 @@ class RoleController extends Controller
                 . $role->id_role . ',id_role',
         ]);
 
+        $originalData = $role->toArray();
+
         $role->update([
             'role_user' => $request->role_user,
         ]);
 
+        $this->logUpdate($role, 'role', $originalData);
+
         return redirect()->route('roles.index')
             ->with('success', 'Role berhasil diperbarui');
     }
+
 
     // 🔹 BACKUP / TRASH
     public function trash()
@@ -70,6 +80,7 @@ class RoleController extends Controller
         $role = Role::onlyTrashed()->findOrFail($id);
         $role->restore();
 
+        $this->logRestore($role, 'role');
 
         return redirect()
         ->route('roles.trash')
@@ -78,6 +89,8 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        $this->logDelete($role, 'role');
+    
         $role->delete();
 
         return redirect()->route('roles.index')
