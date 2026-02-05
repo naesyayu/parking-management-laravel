@@ -140,21 +140,15 @@
                         $role = $user->role;
                     @endphp
                     
-                    {{-- Riwayat Transaksi (Semua Role) --}}
+                    {{-- Ubah Password (Semua Role) --}}
                     <li class="nav-item">
-                        <a class="nav-link" href="#" title="Coming Soon">
-                            <i class="fas fa-history me-1"></i> Riwayat Transaksi
+                        <a class="nav-link {{ request()->routeIs('password.*') ? 'active' : '' }}" 
+                            href="{{ route('password.change') }}" title="Ubah Password">
+                            <i class="fa-solid fa-key me-1"></i> Ubah Password
                         </a>
                     </li>
                     
-                    {{-- Tracking Kendaraan (Semua Role) --}}
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" title="Coming Soon">
-                            <i class="fas fa-map-marked-alt me-1"></i> Tracking Kendaraan
-                        </a>
-                    </li>
-                    
-                    {{-- Transaksi Menu (Petugas & Owner) --}}
+                    {{-- Transaksi Menu (Petugas) --}}
                     @if($role && ($role->hasPermission('transaksi')))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('parkir.masuk') ? 'active' : '' }}" 
@@ -212,6 +206,15 @@
                             <i class="fas fa-history me-1"></i> Activity Log
                         </a>
                     </li>
+
+                    {{-- Laporan Riwayat Transaksi (Semua Role) --}}
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('laporan.*') ? 'active' : '' }}" 
+                            href="{{ route('laporan.index') }}" title="Laporan Riwayat Transaksi">
+                            <i class="fa-solid fa-layer-group me-1"></i> Laporan Riwayat Transaksi
+                        </a>
+                    </li>
+                    
                     @endif
                     
                 @endauth
