@@ -19,11 +19,11 @@ class AreaKapasitas extends Model
 
     public function area()
     {
-        return $this->belongsTo(AreaParkir::class, 'id_area');
+        return $this->belongsTo(AreaParkir::class, 'id_area', 'id_area');
     }
 
     public function tipe()
     {
-        return $this->belongsTo(TipeKendaraan::class, 'id_tipe');
+        return $this->belongsTo(TipeKendaraan::class, 'id_tipe', 'id_tipe');
     }
 }

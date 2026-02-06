@@ -7,6 +7,7 @@ use App\Models\Role;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use App\Traits\ActivityLogger;
 
 class UserController extends Controller
@@ -102,8 +103,8 @@ class UserController extends Controller
         ]);
 
         return redirect()
-        ->route('user.trash')
-        ->with('success', 'User berhasil dikembalikan');
+            ->route('user.trash')
+            ->with('success', 'User berhasil dikembalikan');
     }
 
     public function destroy(User $user)
@@ -120,14 +121,51 @@ class UserController extends Controller
         return redirect()->route('user.index')->with('success', 'User berhasil dihapus');
     }
 
-    /* FORM UPDATE PASSWORD */
+    // ========================================
+    // UBAH PASSWORD USER LAIN (ADMIN ONLY)
+    // ========================================
+
+    /**
+     * Form ubah password user lain (hanya Admin)
+     */
     public function editPassword(User $user)
     {
+        // CRITICAL: Admin TIDAK BISA ubah password sendiri via CRUD
+        if ($user->id_user === Auth::id()) {
+            return redirect()
+                ->route('password.change')
+                ->with('warning', 'Anda tidak dapat mengubah password sendiri di sini. Silakan gunakan halaman "Ubah Password" dengan verifikasi password lama.');
+        }
+
+        // Check role Admin
+        if (!Auth::user()->role->isAdmin()) {
+            return redirect()
+                ->back()
+                ->with('error', 'Hanya Admin yang dapat mengubah password user lain');
+        }
+
         return view('user.password', compact('user'));
     }
 
+    /**
+     * Update password user lain (hanya Admin, tanpa password lama)
+     */
     public function updatePassword(Request $request, User $user)
     {
+        // CRITICAL: Admin TIDAK BISA ubah password sendiri via CRUD
+        if ($user->id_user === Auth::id()) {
+            return redirect()
+                ->route('password.change')
+                ->with('warning', 'Anda tidak dapat mengubah password sendiri di sini. Silakan gunakan halaman "Ubah Password".');
+        }
+
+        // Check role Admin
+        if (!Auth::user()->role->isAdmin()) {
+            return redirect()
+                ->back()
+                ->with('error', 'Hanya Admin yang dapat mengubah password user lain');
+        }
+
         $request->validate([
             'password' => 'required|min:6|confirmed',
         ]);
@@ -136,14 +174,67 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
         ]);
         
-        // LOG EDIT PASSWORD (langsung pakai ActivityLog::log)
+        // LOG EDIT PASSWORD
         \App\Models\ActivityLog::log(
             'edit_password', 
-            'Edit password user: ' . $user->username,
+            'Admin mengubah password user: ' . $user->username,
             null,
-            ['user_id' => $user->id_user]
+            ['target_user_id' => $user->id_user]
         );
 
-        return redirect()->route('user.index')->with('success', 'Password berhasil diubah');
+        return redirect()
+            ->route('user.index')
+            ->with('success', 'Password user ' . $user->username . ' berhasil diubah');
+    }
+
+    // ========================================
+    // UBAH PASSWORD SENDIRI (SEMUA USER)
+    // ========================================
+
+    /**
+     * Form ubah password sendiri (dengan verifikasi password lama)
+     */
+    public function showChangePasswordForm()
+    {
+        $user = Auth::user();
+        return view('user.change-password', compact('user'));
+    }
+
+    /**
+     * Update password sendiri (dengan verifikasi password lama)
+     */
+    public function updateOwnPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:6|confirmed',
+        ], [
+            'current_password.required' => 'Password lama harus diisi',
+            'new_password.required' => 'Password baru harus diisi',
+            'new_password.min' => 'Password baru minimal 6 karakter',
+            'new_password.confirmed' => 'Konfirmasi password baru tidak cocok',
+        ]);
+
+        $user = Auth::user();
+
+        // Verifikasi password lama
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->with('error', 'Password lama tidak sesuai');
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        // Log activity
+        \App\Models\ActivityLog::log(
+            'edit_password', 
+            'User mengubah password sendiri: ' . $user->username
+        );
+
+        return redirect()
+            ->route('dashboard.index')
+            ->with('success', 'Password Anda berhasil diubah');
     }
 }

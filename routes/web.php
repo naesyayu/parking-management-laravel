@@ -17,6 +17,8 @@ use App\Http\Controllers\DetailParkirController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TransaksiMasukController;
 use App\Http\Controllers\TransaksiKeluarController;
+use App\Http\Controllers\LaporanHarianController;
+use App\Http\Controllers\ChangePasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,9 +26,14 @@ use App\Http\Controllers\TransaksiKeluarController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::middleware(['guest', 'nocache'])->group(function () {
+    Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+});
+
+Route::post('/logout', [AuthController::class, 'logout'])
+        ->middleware(['auth', 'nocache'])
+        ->name('logout');
 
 /*
 |--------------------------------------------------------------------------
@@ -45,12 +52,16 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'nocache'])->group(function () {
     
     // =========================================
     // DASHBOARD (SEMUA ROLE)
     // =========================================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
+
+    Route::get('/change-password', [ChangePasswordController::class, 'show'])->name('password.change');
+    Route::post('/change-password/update', [ChangePasswordController::class, 'update'])->name('password.update');
+
     
     // =========================================
     // ACTIVITY LOG (Admin & Owner)
@@ -141,6 +152,22 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/parkir/keluar/cek', [TransaksiKeluarController::class, 'cekTiket'])->name('parkir.keluar.cek');
         Route::post('/parkir/keluar/proses', [TransaksiKeluarController::class, 'proses'])->name('parkir.keluar.proses');
     });
+
+    // =========================================
+    // LAPORAN HARIAN (Admin, Owner, Petugas)
+    // =========================================
+    Route::get('/laporan', [LaporanHarianController::class, 'index'])
+        ->name('laporan.index');
+    
+    // Detail Transaksi (Admin & Petugas - route khusus jika diakses manual)
+    Route::get('/laporan/detail-transaksi', [LaporanHarianController::class, 'detailTransaksi'])
+        ->name('laporan.detail-transaksi')
+        ->middleware('check.role:admin,petugas,petugasparkir');
+    
+    // Export CSV (Admin only)
+    Route::get('/laporan/export', [LaporanHarianController::class, 'export'])
+        ->name('laporan.export')
+        ->middleware('check.role:admin');
     
 });
 
@@ -151,5 +178,5 @@ Route::middleware(['auth'])->group(function () {
 */
 
 Route::fallback(function () {
-    return view('errors.404');
+    abort(404);
 });

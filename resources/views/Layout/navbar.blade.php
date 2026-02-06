@@ -130,7 +130,7 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('dashboard.index') ? 'active' : '' }}" 
                        href="{{ route('dashboard.index') }}">
-                        <i class="fas fa-chart-line me-1"></i> Dashboard Laporan
+                        <i class="fas fa-chart-line me-1"></i> Laporan Transaksi Hari Ini
                     </a>
                 </li>
                 
@@ -197,6 +197,22 @@
                         </ul>
                     </li>
                     @endif
+
+                    {{-- View Data Master (Semua Role) --}}
+                    @if($role && $role->hasPermission('table_master'))
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" 
+                           href="#" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-file me-1"></i> View Data Master
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-list-alt me-2"></i> Master Data Parkir</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-th-list me-2"></i> Data Transaksi</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-user-circle me-2"></i> Data Member dan Kendaraan </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                        </ul>
+                    </li>
+                    @endif
                     
                     {{-- Activity Log (Admin & Owner) --}}
                     @if($role && ($role->hasPermission('activity_log')))
@@ -206,16 +222,18 @@
                             <i class="fas fa-history me-1"></i> Activity Log
                         </a>
                     </li>
+                    @endif
 
                     {{-- Laporan Riwayat Transaksi (Semua Role) --}}
+                    @if($role && ($role->hasPermission('laporan')))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('laporan.*') ? 'active' : '' }}" 
                             href="{{ route('laporan.index') }}" title="Laporan Riwayat Transaksi">
                             <i class="fa-solid fa-layer-group me-1"></i> Laporan Riwayat Transaksi
                         </a>
                     </li>
-                    
                     @endif
+                    
                     
                 @endauth
             </ul>

@@ -1,0 +1,95 @@
+@extends('app')
+
+@section('content')
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <h2 class="mb-4">Detail Laporan Transaksi</h2>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ route('laporan.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Kembali
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Informasi Laporan</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Tanggal:</strong></p>
+                            <p>{{ \Carbon\Carbon::parse($laporan->tanggal)->format('d F Y') }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Area Parkir:</strong></p>
+                            <p>{{ $laporan->areaParkir->lokasi ?? '-' }}</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <p><strong>Transaksi Masuk:</strong></p>
+                            <p class="h5 text-success">{{ $laporan->jumlah_transaksi_masuk }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p><strong>Transaksi Keluar:</strong></p>
+                            <p class="h5 text-danger">{{ $laporan->jumlah_transaksi_keluar }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p><strong>Total Kendaraan:</strong></p>
+                            <p class="h5 text-info">{{ $laporan->jumlah_kendaraan }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <p><strong>Total Pendapatan:</strong></p>
+                            <p class="h5 text-primary">Rp {{ number_format($laporan->total_pendapatan, 0, ',', '.') }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Detail Transaksi</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>Tipe</th>
+                                    <th>Kendaraan</th>
+                                    <th>Tarif</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($transaksi as $t)
+                                    <tr>
+                                        <td>{{ \Carbon\Carbon::parse($t->created_at)->format('H:i:s') }}</td>
+                                        <td>
+                                            <span class="badge {{ $t->tipe_transaksi == 'masuk' ? 'bg-success' : 'bg-danger' }}">
+                                                {{ ucfirst($t->tipe_transaksi) }}
+                                            </span>
+                                        </td>
+                                        <td>{{ $t->detailParkir->kendaraan->plat_nomor ?? '-' }}</td>
+                                        <td>Rp {{ number_format($t->tarif ?? 0, 0, ',', '.') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Tidak ada transaksi</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection

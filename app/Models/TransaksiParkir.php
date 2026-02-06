@@ -44,7 +44,7 @@ class TransaksiParkir extends Model
 
     public function kendaraan()
     {
-    return $this->belongsTo(Kendaraan::class, 'id_kendaraan', 'id_kendaraan');
+        return $this->belongsTo(Kendaraan::class, 'id_kendaraan', 'id_kendaraan')->withTrashed();
     }
 
 

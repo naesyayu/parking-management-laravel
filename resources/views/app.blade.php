@@ -23,8 +23,6 @@
 
     @include('Layout.navbar')
 
-    @include('Layout.sidebar')
-
     <div class="container-fluid">
         <div class="row">
             <!-- MAIN CONTENT -->

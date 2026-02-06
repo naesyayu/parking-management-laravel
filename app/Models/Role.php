@@ -21,106 +21,89 @@ class Role extends Model
         return $this->hasMany(User::class, 'id_role', 'id_role');
     }
 
-    /**
-     * Check apakah role adalah Owner
-     */
     public function isOwner(): bool
     {
         return strtolower($this->role_user) === 'owner';
     }
 
-    /**
-     * Check apakah role adalah Admin
-     */
     public function isAdmin(): bool
     {
         return strtolower($this->role_user) === 'admin';
     }
 
-    /**
-     * Check apakah role adalah Petugas
-     */
     public function isPetugas(): bool
     {
         return in_array(strtolower($this->role_user), ['petugas parkir', 'petugas']);
     }
 
-    /**
-     * Check permission - HYBRID METHOD
-     * Cek dari JSON dulu, kalau tidak ada generate by role
-     */
     public function hasPermission(string $permission): bool
     {
-        // Jika ada permissions JSON, gunakan itu
         if ($this->permissions && is_array($this->permissions)) {
             return isset($this->permissions[$permission]) && $this->permissions[$permission] === true;
         }
 
-        // Fallback: Generate by role_user
         return $this->generatePermissionByRole($permission);
     }
 
-    /**
-     * Generate permission berdasarkan role_user
-     */
     private function generatePermissionByRole(string $permission): bool
     {
-        // Owner: Akses semua
         if ($this->isOwner()) {
-            return true;
+            return !in_array($permission, ['user_management', 'transaksi', 'master_data']); // Owner TIDAK bisa kelola user & transaksi masuk/keluar
         }
 
-        // Admin: Semua kecuali transaksi
         if ($this->isAdmin()) {
-            return !in_array($permission, ['transaksi']);
+            return !in_array($permission, ['transaksi']); // Admin TIDAK bisa transaksi masuk/keluar
         }
 
-        // Petugas: Hanya transaksi
         if ($this->isPetugas()) {
-            return $permission === 'transaksi';
+            return !in_array($permission, ['user_management', 'master_data', 'activity_log']); // Petugas TIDAK bisa kelola user & master data
         }
 
         return false;
     }
 
-    /**
-     * Get permissions array - HYBRID METHOD
-     */
     public function getPermissions(): array
     {
-        // Jika ada permissions JSON, gunakan itu
         if ($this->permissions && is_array($this->permissions)) {
             return $this->permissions;
         }
 
-        // Fallback: Generate by role_user
         if ($this->isOwner()) {
             return [
-                'transaksi' => true,
-                'master_data' => false,
-                'laporan' => true,
-                'activity_log' => false,
-                'user_management' => false,
+                'transaksi' => false,          // Owner TIDAK bisa input transaksi
+                'master_data' => false,         // Owner kelola master data
+                'laporan' => true,             // Owner akses laporan
+                'activity_log' => true,        // Owner lihat activity log
+                'user_management' => false,    // Owner TIDAK kelola user
+                'change_password' => true,     // Owner ganti password
+                'detail_transaksi' => true,    // Owner lihat detail
+                'table_master' => true,        // Owner lihat view master
             ];
         }
 
         if ($this->isAdmin()) {
             return [
-                'transaksi' => false,
-                'master_data' => true,
-                'laporan' => true,
-                'activity_log' => true,
-                'user_management' => true,
+                'transaksi' => false,          // Admin TIDAK input transaksi
+                'master_data' => true,         // Admin kelola master data
+                'laporan' => true,             // Admin filter & export laporan
+                'activity_log' => true,        // Admin lihat activity log
+                'user_management' => true,     // Admin kelola user
+                'change_password' => true,     // Admin ganti password
+                'detail_transaksi' => true,    // Admin lihat detail
+                'table_master' => true,        // Admin lihat view master
             ];
         }
 
         if ($this->isPetugas()) {
             return [
-                'transaksi' => true,
-                'master_data' => false,
-                'laporan' => false,
-                'activity_log' => false,
-                'user_management' => false,
+                'transaksi' => true,           // Petugas input transaksi
+                'master_data' => false,        // Petugas TIDAK kelola master
+                'laporan' => true,             // Petugas lihat laporan (read-only)
+                'activity_log' => false,       // Petugas TIDAK lihat activity log
+                'user_management' => false,    // Petugas TIDAK kelola user
+                'change_password' => true,     // Petugas ganti password
+                'detail_transaksi' => true,    // Petugas lihat detail transaksi sendiri
+                'table_master' => true,        // Petugas lihat view master (read-only)
             ];
         }
 

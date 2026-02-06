@@ -20,7 +20,7 @@ class AreaParkir extends Model
 
     public function kapasitas()
     {
-        return $this->hasMany(AreaKapasitas::class, 'id_area');
+        return $this->hasMany(AreaKapasitas::class, 'id_area', 'id_area');
     }
 
     public function transaksiParkir()

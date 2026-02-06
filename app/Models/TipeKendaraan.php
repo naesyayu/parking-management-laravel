@@ -18,17 +18,17 @@ class TipeKendaraan extends Model
 
     public function kendaraan()
     {
-        return $this->hasMany(Kendaraan::class, 'id_tipe');
+        return $this->hasMany(Kendaraan::class, 'id_tipe', 'id_tipe');
     }
 
     public function areaKapasitas()
     {
-        return $this->hasMany(AreaKapasitas::class, 'id_tipe');
+        return $this->hasMany(AreaKapasitas::class, 'id_tipe', 'id_tipe');
     }
 
     public function tarifParkir()
     {
-        return $this->hasMany(TarifParkir::class, 'id_tipe');
+        return $this->hasMany(TarifParkir::class, 'id_tipe', 'id_tipe');
     }
 
 }
