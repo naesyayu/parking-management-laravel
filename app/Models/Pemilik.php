@@ -20,12 +20,12 @@ class Pemilik extends Model
 
     public function kendaraan()
     {
-        return $this->hasMany(Kendaraan::class, 'id_pemilik');
+        return $this->hasMany(Kendaraan::class, 'id_pemilik', 'id_pemilik');
     }
 
     public function members()
     {
-        return $this->hasMany(Member::class, 'id_pemilik');
+        return $this->hasMany(Member::class, 'id_pemilik', 'id_pemilik');
     }
 
     public function transaksiParkir()

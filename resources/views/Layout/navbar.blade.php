@@ -201,14 +201,14 @@
                     {{-- View Data Master (Semua Role) --}}
                     @if($role && $role->hasPermission('table_master'))
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" 
+                        <a class="nav-link dropdown-toggle {{ request()->routeIs('master-data.*') ? 'active' : '' }}" 
                            href="#" data-bs-toggle="dropdown">
                             <i class="fa-solid fa-file me-1"></i> View Data Master
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-list-alt me-2"></i> Master Data Parkir</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-th-list me-2"></i> Data Transaksi</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user-circle me-2"></i> Data Member dan Kendaraan </a></li>
+                            <li><a class="dropdown-item" href="{{ route('master-data.data-parkir') }}"><i class="fa-solid fa-square-parking me-2"></i> Master Data Parkir</a></li>
+                            <li><a class="dropdown-item" href="{{ route('master-data.riwayat-transaksi') }}"><i class="fas fa-th-list me-2"></i> Data Transaksi</a></li>
+                            <li><a class="dropdown-item" href="{{ route('master-data.member-kendaraan') }}"><i class="fas fa-user-circle me-2"></i> Data Member dan Kendaraan </a></li>
                             <li><hr class="dropdown-divider"></li>
                         </ul>
                     </li>

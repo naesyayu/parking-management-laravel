@@ -117,7 +117,7 @@ class ActivityLogController extends Controller
             'other' => 'Lainnya',
         ];
 
-        return view('activity-log.index', compact('logs', 'users', 'actions'));
+        return view('pages/activity-log.index', compact('logs', 'users', 'actions'));
     }
 
     /**

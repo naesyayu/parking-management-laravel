@@ -22,13 +22,13 @@ class Member extends Model
         'status',
     ];
 
-    protected $dates = [
-        'berlaku_mulai',
-        'berlaku_hingga',
-        'deleted_at',
+    protected $casts = [
+        'berlaku_mulai'  => 'date',
+        'berlaku_hingga' => 'date',
+        'deleted_at'     => 'datetime',
     ];
 
-    // Relasi ke pemilik
+    // RELASI
     public function pemilik()
     {
         return $this->belongsTo(Pemilik::class, 'id_pemilik');
@@ -39,9 +39,15 @@ class Member extends Model
         return $this->belongsTo(MemberLevel::class, 'id_level');
     }
 
+    public function transaksiParkir()
+    {
+        return $this->hasMany(TransaksiParkir::class, 'id_member', 'id_member');
+    }
+
+    // LOGIC
     public function isExpired(): bool
     {
-        return Carbon::now()->gt($this->berlaku_hingga);
+        return now()->gt($this->berlaku_hingga);
     }
 
     protected static function booted()
@@ -57,10 +63,4 @@ class Member extends Model
             }
         });
     }
-
-    public function transaksiParkir()
-    {
-        return $this->hasMany(TransaksiParkir::class, 'id_member', 'id_member');
-    }
-
 }

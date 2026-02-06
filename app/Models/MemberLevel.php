@@ -17,6 +17,6 @@ class MemberLevel extends Model
     // Relasi ke member
     public function members()
     {
-        return $this->hasMany(Member::class, 'id_level');
+        return $this->hasMany(Member::class, 'id_level', 'id_level');
     }
 }

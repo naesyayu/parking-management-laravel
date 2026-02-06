@@ -30,7 +30,7 @@ class DashboardController extends Controller
         // Data untuk semua role
         $data = $this->getDashboardData();
 
-        return view('dashboard.index', compact('data', 'role'));
+        return view('pages/dashboard.index', compact('data', 'role'));
     }
 
     /**
@@ -209,7 +209,6 @@ class DashboardController extends Controller
         ];
     }
 
-    // Di DashboardController.php - tambahkan method baru
     public function laporanCustom(Request $request)
     {
         $request->validate([

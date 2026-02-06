@@ -19,6 +19,7 @@ use App\Http\Controllers\TransaksiMasukController;
 use App\Http\Controllers\TransaksiKeluarController;
 use App\Http\Controllers\LaporanHarianController;
 use App\Http\Controllers\ChangePasswordController;
+use App\Http\Controllers\MasterDataController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +64,25 @@ Route::middleware(['auth', 'nocache'])->group(function () {
     Route::post('/change-password/update', [ChangePasswordController::class, 'update'])->name('password.update');
 
     
+    // =========================================
+    // MASER DATA (SEMUA ROLE)
+    // =========================================
+
+    // Route untuk Data Parkir
+    Route::get('/master-data', [App\Http\Controllers\MasterDataController::class, 'parkir'])
+        ->name('master-data.data-parkir')
+        ->middleware('auth');
+
+    // Riwayat Transaksi
+    Route::get('/master-data/riwayat-transaksi', [App\Http\Controllers\MasterDataController::class, 'riwayatTransaksi'])
+        ->name('master-data.riwayat-transaksi')
+        ->middleware('auth');
+
+    // Route untuk Data Member & Kendaraan
+    Route::get('/master-data/member-kendaraan', [App\Http\Controllers\MasterDataController::class, 'memberKendaraan'])
+        ->name('master-data.member-kendaraan')
+        ->middleware('auth');
+
     // =========================================
     // ACTIVITY LOG (Admin & Owner)
     // =========================================
