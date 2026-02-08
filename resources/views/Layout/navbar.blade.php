@@ -228,8 +228,8 @@
                     @if($role && ($role->hasPermission('laporan')))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('laporan.*') ? 'active' : '' }}" 
-                            href="{{ route('laporan.index') }}" title="Laporan Riwayat Transaksi">
-                            <i class="fa-solid fa-layer-group me-1"></i> Laporan Riwayat Transaksi
+                            href="{{ route('laporan.breakdown') }}" title="Laporan Riwayat Transaksi">
+                            <i class="fa-solid fa-layer-group me-1"></i> Breakdown Riwayat Transaksi
                         </a>
                     </li>
                     @endif

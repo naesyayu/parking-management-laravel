@@ -1470,6 +1470,64 @@ Semoga dokumentasi ini membantu Anda memahami sistem parkir ini! 🚗🏍️
 
 ---
 
+## 📝 CHANGELOG - PERUBAHAN TERBARU (7 Februari 2026)
+
+### 🔧 Bug Fixes dan Perbaikan
+
+#### 1. **Perbaikan Pagination pada Halaman Data Member & Kendaraan**
+   - **Masalah:** Tombol Next/Previous pada tab "Pemilik Tanpa Member" redirect ke tab "Pemilik dengan Member" alih-alih menampilkan data selanjutnya
+   - **Penyebab:** Bootstrap tabs tidak preserve state tab ketika pagination bekerja
+   - **Solusi:** 
+     - Implementasi JavaScript untuk detect active tab berdasarkan query parameter (`non_member_page`, `kendaraan_page`)
+     - Sistem pagination sekarang properly preserve tab state saat user navigasi ke halaman berikutnya
+   - **File yang dimodifikasi:** `resources/views/pages/master-data/data-member-kendaraan.blade.php`
+
+#### 2. **Tambahan Tab Kendaraan Tanpa Pemilik**
+   - **Fitur Baru:** Menambah tab ketiga untuk menampilkan kendaraan yang tidak memiliki pemilik
+   - **Deskripsi Tab:**
+     - Nama: "Kendaraan Tanpa Pemilik"
+     - Warna Badge: Warning (kuning)
+     - Kolom yang ditampilkan: No, Plat Nomor, Tipe Kendaraan, Status
+   - **Filter:** Dapat menggunakan filter "Plat Nomor" untuk mencari kendaraan spesifik
+   - **Pagination:** Menggunakan query name `kendaraan_page` terpisah dari tab lainnya
+   - **File yang dimodifikasi:**
+     - `resources/views/pages/master-data/data-member-kendaraan.blade.php`
+     - `app/Http/Controllers/MasterDataController.php`
+
+#### 3. **Cleanup Code di Laporan Controller**
+   - **Pembersihan:** Menghapus kode yang tidak terpakai pada `LaporanHarianController`
+   - **Bagian yang dihapus:**
+     - Method `index()` - yang sebelumnya hanya sebagai router menuju breakdown atau detail transaksi
+     - Method `applyPeriodFilter()` - helper yang tidak pernah digunakan di kode manapun
+     - Import `Carbon\Carbon` - tidak lagi diperlukan setelah menghapus method period filter
+   - **Hasil:** Controller sekarang hanya memiliki 2 method utama:
+     - `breakdown()` - untuk menampilkan halaman breakdown laporan
+     - `getOccupancy()` - helper private untuk menghitung occupancy rate per area
+   - **Keuntungan:** Kode lebih clean, efisien, dan mudah dimaintain
+   - **File yang dimodifikasi:** `app/Http/Controllers/LaporanHarianController.php`
+
+### 📊 Update Model & Query
+
+#### MasterDataController::memberKendaraan()
+```php
+// Added query untuk kendaraan tanpa pemilik
+$queryKendaraanTanpaPemilik = Kendaraan::with('tipe')
+    ->whereNull('id_pemilik');
+
+// Pagination dengan query name terpisah
+$kendaraanTanpaPemilik = $queryKendaraanTanpaPemilik->paginate(10, ['*'], 'kendaraan_page');
+```
+
+### 🎯 Daftar Perubahan Per File
+
+| File | Perubahan | Tipe |
+|------|-----------|------|
+| `resources/views/pages/master-data/data-member-kendaraan.blade.php` | Tambah tab, fix pagination, tambah JavaScript | Enhancement + Fix |
+| `app/Http/Controllers/MasterDataController.php` | Skip import Kendaraan, tambah query kendaraan tanpa pemilik | Enhancement |
+| `app/Http/Controllers/LaporanHarianController.php` | Hapus method `index()`, `applyPeriodFilter()`, cleanup imports | Code Cleanup |
+
+---
+
 **Dibuat untuk:** Siswa SMK Program Keahlian Teknik Komputer dan Informatika
-**Du=Tanggal:** 6 Februari 2026
+**Tanggal:** 7 Februari 2026
 **Status:** Dokumentasi Lengkap ✓

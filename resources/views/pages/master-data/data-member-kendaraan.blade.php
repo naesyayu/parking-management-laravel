@@ -96,17 +96,33 @@
                     <!-- TAB NAVIGATION -->
                     <ul class="nav nav-tabs mb-4" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#member-tab">
+                            <a class="nav-link {{ $activeTab === 'member' ? 'active' : '' }}" 
+                               href="#member-tab" 
+                               data-bs-toggle="tab"
+                               id="member-tab-link">
                                 <i class="fas fa-id-card me-1"></i>
                                 Pemilik dengan Member
                                 <span class="badge bg-success ms-1">{{ $pemilikMember->total() }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#non-member-tab">
+                            <a class="nav-link {{ $activeTab === 'non-member' ? 'active' : '' }}" 
+                               href="#non-member-tab" 
+                               data-bs-toggle="tab"
+                               id="non-member-tab-link">
                                 <i class="fas fa-user me-1"></i>
                                 Pemilik Tanpa Member
                                 <span class="badge bg-secondary ms-1">{{ $pemilikNonMember->total() }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ $activeTab === 'kendaraan' ? 'active' : '' }}" 
+                               href="#kendaraan-tanpa-tab" 
+                               data-bs-toggle="tab"
+                               id="kendaraan-tab-link">
+                                <i class="fas fa-car me-1"></i>
+                                Kendaraan Tanpa Pemilik
+                                <span class="badge bg-warning ms-1">{{ $kendaraanTanpaPemilik->total() }}</span>
                             </a>
                         </li>
                     </ul>
@@ -115,7 +131,7 @@
                     <div class="tab-content">
                         
                         <!-- TAB 1: PEMILIK DENGAN MEMBER -->
-                        <div id="member-tab" class="tab-pane fade show active">
+                        <div id="member-tab" class="tab-pane fade {{ $activeTab === 'member' ? 'show active' : '' }}">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead class="table-success">
@@ -200,12 +216,12 @@
                             
                             <!-- Pagination -->
                             <div class="mt-3">
-                                {{ $pemilikMember->appends(request()->query())->links() }}
+                                {{ $pemilikMember->appends(request()->except('non_member_page', 'kendaraan_page'))->links() }}
                             </div>
                         </div>
 
                         <!-- TAB 2: PEMILIK TANPA MEMBER -->
-                        <div id="non-member-tab" class="tab-pane fade">
+                        <div id="non-member-tab" class="tab-pane fade {{ $activeTab === 'non-member' ? 'show active' : '' }}">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead class="table-secondary">
@@ -262,7 +278,54 @@
                             
                             <!-- Pagination -->
                             <div class="mt-3">
-                                {{ $pemilikNonMember->appends(request()->query())->links() }}
+                                {{ $pemilikNonMember->appends(request()->except('member_page', 'kendaraan_page'))->links() }}
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: KENDARAAN TANPA PEMILIK -->
+                        <div id="kendaraan-tanpa-tab" class="tab-pane fade {{ $activeTab === 'kendaraan' ? 'show active' : '' }}">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th width="5%">No</th>
+                                            <th>Plat Nomor</th>
+                                            <th>Tipe Kendaraan</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($kendaraanTanpaPemilik as $index => $kendaraan)
+                                        <tr>
+                                            <td class="text-center">{{ $kendaraanTanpaPemilik->firstItem() + $index }}</td>
+                                            <td>
+                                                <strong>{{ $kendaraan->plat_nomor }}</strong>
+                                            </td>
+                                            <td>
+                                                {{ $kendaraan->tipe->tipe_kendaraan ?? '-' }}
+                                            </td>
+                                            <td>
+                                                @if($kendaraan->status === 'aktif')
+                                                    <span class="badge bg-success">Aktif</span>
+                                                @else
+                                                    <span class="badge bg-secondary">Nonaktif</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">
+                                                Tidak ada kendaraan tanpa pemilik
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Pagination -->
+                            <div class="mt-3">
+                                {{ $kendaraanTanpaPemilik->appends(request()->except('member_page', 'non_member_page'))->links() }}
                             </div>
                         </div>
 
@@ -295,4 +358,6 @@
         color: white;
     }
 </style>
+
+{{-- NO JAVASCRIPT NEEDED - Tab handled by server-side $activeTab variable --}}
 @endsection

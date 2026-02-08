@@ -17,7 +17,7 @@ use App\Http\Controllers\DetailParkirController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TransaksiMasukController;
 use App\Http\Controllers\TransaksiKeluarController;
-use App\Http\Controllers\LaporanHarianController;
+use App\Http\Controllers\BreakdownLaporanHarianController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\MasterDataController;
 
@@ -174,18 +174,14 @@ Route::middleware(['auth', 'nocache'])->group(function () {
     });
 
     // =========================================
-    // LAPORAN HARIAN (Admin, Owner, Petugas)
+    // BREAKDOWN LAPORAN HARIAN (Owner, Petugas)
     // =========================================
-    Route::get('/laporan', [LaporanHarianController::class, 'index'])
-        ->name('laporan.index');
-    
-    // Detail Transaksi (Admin & Petugas - route khusus jika diakses manual)
-    Route::get('/laporan/detail-transaksi', [LaporanHarianController::class, 'detailTransaksi'])
-        ->name('laporan.detail-transaksi')
-        ->middleware('check.role:admin,petugas,petugasparkir');
+    Route::get('/laporan', [BreakdownLaporanHarianController::class, 'breakdown'])
+        ->name('laporan.breakdown')
+        ->middleware('auth');
     
     // Export CSV (Admin only)
-    Route::get('/laporan/export', [LaporanHarianController::class, 'export'])
+    Route::get('/laporan/export', [BreakdownLaporanHarianController::class, 'export'])
         ->name('laporan.export')
         ->middleware('check.role:admin');
     

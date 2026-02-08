@@ -8,37 +8,17 @@ use App\Models\TipeKendaraan;
 use App\Models\AreaParkir;
 use App\Models\AreaKapasitas;
 use App\Models\MetodePembayaran;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
-class LaporanHarianController extends Controller
+class BreakdownLaporanHarianController extends Controller
 {
-    /**
-     * Main entry point - mengarahkan berdasarkan role
-     */
-    public function index(Request $request)
-    {
-        $role = Auth::user()->role;
-
-        // Petugas langsung ke detail transaksi
-        if ($role->isPetugas()) {
-            return redirect()->route('laporan.detail-transaksi');
-        }
-
-        // Admin dan Owner ke breakdown
-        return $this->breakdown($request);
-    }
-
-    /**
-     * Halaman Breakdown - untuk Admin dan Owner
-     * Admin memiliki tombol switch + export
-     * Owner hanya melihat breakdown
-     */
+    
     public function breakdown(Request $request)
     {
         $role = Auth::user()->role;
 
-        // Filter query transaksi
         $query = TransaksiParkir::with([
             'kendaraan.tipe',
             'kendaraan.pemilik',
@@ -70,7 +50,7 @@ class LaporanHarianController extends Controller
             );
         }
 
-        // Summary statistics
+        // Summary
         $summary = [
             'total_transaksi' => (clone $query)->count(),
             'total_pendapatan' => (clone $query)->sum('total_bayar') ?: 0,
@@ -78,7 +58,7 @@ class LaporanHarianController extends Controller
             'avg' => (clone $query)->avg('total_bayar') ?: 0,
         ];
 
-        // Breakdown per tipe kendaraan
+        // Breakdowns
         $breakdownTipe = (clone $query)->get()
             ->filter(fn($t) => $t->kendaraan)
             ->groupBy('kendaraan.id_tipe')
@@ -89,7 +69,6 @@ class LaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
-        // Breakdown per metode pembayaran
         $breakdownMetode = (clone $query)->get()
             ->groupBy('id_metode')
             ->map(fn($items) => [
@@ -99,13 +78,26 @@ class LaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
-        // Occupancy rate per area
         $occupancy = $this->getOccupancy();
 
-        // Data untuk filter dropdown
         $areas = AreaParkir::all();
         $metodes = MetodePembayaran::all();
         $tipes = TipeKendaraan::all();
+
+        // Chart data
+        $transaksiPerHari = $this->getTransaksiPerHari($query, $request);
+
+        $chartTipe = $breakdownTipe->map(fn($item) => [
+            'label' => $item['tipe'],
+            'value' => $item['jumlah'],
+            'revenue' => $item['revenue']
+        ])->values();
+
+        $chartMetode = $breakdownMetode->map(fn($item) => [
+            'label' => $item['metode'],
+            'value' => $item['jumlah'],
+            'revenue' => $item['revenue']
+        ])->values();
 
         return view('pages.laporan.breakdown', compact(
             'summary',
@@ -115,73 +107,24 @@ class LaporanHarianController extends Controller
             'areas',
             'metodes',
             'tipes',
-            'role'
+            'role',
+            'transaksiPerHari',
+            'chartTipe',
+            'chartMetode'
         ));
     }
 
     /**
-     * Halaman Detail Transaksi - untuk Admin dan Petugas
-     * Admin memiliki tombol switch kembali ke breakdown
-     * Petugas hanya melihat transaksi mereka sendiri
-     */
-    public function detailTransaksi(Request $request)
-    {
-        $user = Auth::user();
-        $role = $user->role;
-
-        // Apply period filter helper
-        $this->applyPeriodFilter($request);
-
-        // Base query
-        $query = TransaksiParkir::with([
-            'kendaraan.tipe',
-            'kendaraan.pemilik',
-            'areaParkir',
-            'metodePembayaran',
-            'user',
-            'tarifParkir'
-        ])->where('status', 'out');
-
-        // Petugas hanya melihat transaksi mereka sendiri
-        if ($role->isPetugas()) {
-            $query->where('id_user', $user->id_user);
-        }
-
-        // Apply filters
-        if ($request->filled('plat_nomor')) {
-            $query->whereHas('kendaraan', fn($q) => 
-                $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%')
-            );
-        }
-        if ($request->filled('id_tipe')) {
-            $query->whereHas('kendaraan', fn($q) => 
-                $q->where('id_tipe', $request->id_tipe)
-            );
-        }
-        if ($request->filled('start_date')) {
-            $query->whereDate('waktu_keluar', '>=', $request->start_date);
-        }
-        if ($request->filled('end_date')) {
-            $query->whereDate('waktu_keluar', '<=', $request->end_date);
-        }
-
-        // Get paginated results
-        $transaksi = $query->orderBy('waktu_keluar', 'desc')->paginate(20);
-        $tipes = TipeKendaraan::all();
-
-        return view('pages.laporan.detail-transaksi', compact('transaksi', 'tipes', 'role'));
-    }
-
-    /**
-     * Export CSV - hanya untuk Admin
+     * EXPORT CSV (Admin only)
      */
     public function export(Request $request)
     {
+        // Guard: Admin only
         if (!Auth::user()->role->isAdmin()) {
-            abort(403, 'Unauthorized action.');
+            abort(403, 'Hanya Admin yang dapat export data');
         }
 
-        // Build query with same filters as breakdown
+        // Build query dengan filter yang sama seperti breakdown
         $query = TransaksiParkir::with([
             'kendaraan.tipe',
             'kendaraan.pemilik',
@@ -189,7 +132,7 @@ class LaporanHarianController extends Controller
             'metodePembayaran'
         ])->where('status', 'out');
 
-        // Apply all filters
+        // Apply filters
         if ($request->filled('plat_nomor')) {
             $query->whereHas('kendaraan', fn($q) => 
                 $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%')
@@ -215,36 +158,40 @@ class LaporanHarianController extends Controller
 
         $transaksi = $query->orderBy('waktu_keluar', 'desc')->get();
 
+        // Generate filename
         $filename = 'Laporan_Breakdown_' . now()->format('Ymd_His') . '.csv';
         
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename={$filename}"
+            'Content-Disposition' => "attachment; filename={$filename}",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0'
         ];
 
         $callback = function() use($transaksi) {
             $file = fopen('php://output', 'w');
             
-            // UTF-8 BOM for Excel compatibility
+            // UTF-8 BOM for Excel
             fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
-            // Header row
+            // Header
             fputcsv($file, [
-                'Waktu Keluar', 
-                'Plat Nomor', 
-                'Tipe', 
-                'Pemilik', 
-                'Area', 
-                'Metode', 
-                'Durasi (jam)', 
-                'Total Bayar', 
+                'Waktu Keluar',
+                'Plat Nomor',
+                'Tipe Kendaraan',
+                'Pemilik',
+                'Area',
+                'Metode Pembayaran',
+                'Durasi (jam)',
+                'Total Bayar',
                 'Diskon'
             ]);
             
-            // Data rows
+            // Data
             foreach($transaksi as $t) {
                 fputcsv($file, [
-                    $t->waktu_keluar->format('d/m/Y H:i'),
+                    $t->waktu_keluar ? $t->waktu_keluar->format('d/m/Y H:i') : '-',
                     $t->kendaraan->plat_nomor ?? '-',
                     $t->kendaraan->tipe->tipe_kendaraan ?? '-',
                     $t->kendaraan->pemilik->nama ?? '-',
@@ -256,12 +203,13 @@ class LaporanHarianController extends Controller
                 ]);
             }
 
-            // Summary section
+            // Summary
             fputcsv($file, []);
-            fputcsv($file, ['RINGKASAN']);
+            fputcsv($file, ['===== RINGKASAN =====']);
             fputcsv($file, ['Total Transaksi', $transaksi->count()]);
             fputcsv($file, ['Total Pendapatan', $transaksi->sum('total_bayar')]);
             fputcsv($file, ['Total Diskon', $transaksi->sum('diskon')]);
+            fputcsv($file, ['Pendapatan Bersih', $transaksi->sum('total_bayar') - $transaksi->sum('diskon')]);
             
             fclose($file);
         };
@@ -269,42 +217,49 @@ class LaporanHarianController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    /**
-     * Helper: Apply period filter shortcuts
-     */
-    private function applyPeriodFilter(Request $request)
+    private function getTransaksiPerHari($query, $request)
     {
-        if (!$request->filled('period_type') || $request->period_type === 'custom') {
-            return;
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = Carbon::parse($request->start_date);
+            $endDate = Carbon::parse($request->end_date);
+        } else {
+            $endDate = Carbon::now();
+            $startDate = Carbon::now()->subDays(29);
         }
 
-        $today = Carbon::now();
-        
-        switch ($request->period_type) {
-            case 'today':
-                $request->merge([
-                    'start_date' => $today->format('Y-m-d'),
-                    'end_date' => $today->format('Y-m-d'),
-                ]);
-                break;
-            case 'week':
-                $request->merge([
-                    'start_date' => $today->copy()->startOfWeek()->format('Y-m-d'),
-                    'end_date' => $today->copy()->endOfWeek()->format('Y-m-d'),
-                ]);
-                break;
-            case 'month':
-                $request->merge([
-                    'start_date' => $today->copy()->startOfMonth()->format('Y-m-d'),
-                    'end_date' => $today->copy()->endOfMonth()->format('Y-m-d'),
-                ]);
-                break;
+        $daysDiff = $startDate->diffInDays($endDate);
+        if ($daysDiff > 90) {
+            $startDate = $endDate->copy()->subDays(89);
         }
+
+        $data = (clone $query)
+            ->select(
+                DB::raw('DATE(waktu_keluar) as tanggal'),
+                DB::raw('COUNT(*) as total'),
+                DB::raw('SUM(total_bayar) as pendapatan')
+            )
+            ->whereBetween('waktu_keluar', [$startDate, $endDate->endOfDay()])
+            ->groupBy('tanggal')
+            ->orderBy('tanggal')
+            ->get();
+
+        $period = Carbon::parse($startDate)->daysUntil($endDate);
+        $dailyData = collect($period)->map(function($date) use ($data) {
+            $dateStr = $date->format('Y-m-d');
+            $found = $data->firstWhere('tanggal', $dateStr);
+            
+            return [
+                'tanggal' => $date->format('d M'),
+                'tanggal_full' => $dateStr,
+                'hari' => $date->locale('id')->dayName,
+                'total' => $found ? $found->total : 0,
+                'pendapatan' => $found ? $found->pendapatan : 0
+            ];
+        });
+
+        return $dailyData;
     }
 
-    /**
-     * Helper: Calculate occupancy rate per area
-     */
     private function getOccupancy()
     {
         return AreaKapasitas::with(['area', 'tipe'])
@@ -320,7 +275,6 @@ class LaporanHarianController extends Controller
                 $totalKapasitas = $items->sum('kapasitas');
                 $areaId = $firstItem->id_area;
                 
-                // Count vehicles currently parked in this area
                 $totalTerpakai = TransaksiParkir::where('id_area', $areaId)
                     ->where('status', 'in')
                     ->count();

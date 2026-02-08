@@ -9,6 +9,7 @@ use App\Models\DetailParkir;
 use App\Models\Pemilik;
 use App\Models\MemberLevel;
 use App\Models\TransaksiParkir;
+use App\Models\Kendaraan;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -80,13 +81,17 @@ class MasterDataController extends Controller
             'kendaraan.tipe'
         ])->doesntHave('members');
 
-        // Filter Nama Pemilik
+        // Query untuk Kendaraan TIDAK MEMILIKI Pemilik
+        $queryKendaraanTanpaPemilik = Kendaraan::with('tipe')
+            ->whereNull('id_pemilik');
+
+        // Filter Nama Pemilik (tidak berlaku untuk kendaraan tanpa pemilik)
         if ($request->filled('nama')) {
             $queryMember->where('nama', 'like', '%' . $request->nama . '%');
             $queryNonMember->where('nama', 'like', '%' . $request->nama . '%');
         }
 
-        // Filter No HP
+        // Filter No HP (tidak berlaku untuk kendaraan tanpa pemilik)
         if ($request->filled('no_hp')) {
             $queryMember->where('no_hp', 'like', '%' . $request->no_hp . '%');
             $queryNonMember->where('no_hp', 'like', '%' . $request->no_hp . '%');
@@ -100,6 +105,7 @@ class MasterDataController extends Controller
             $queryNonMember->whereHas('kendaraan', function($q) use ($request) {
                 $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%');
             });
+            $queryKendaraanTanpaPemilik->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%');
         }
 
         // Filter Level Member (hanya untuk yang punya member)
@@ -116,17 +122,28 @@ class MasterDataController extends Controller
             });
         }
 
-        // Ambil data dengan pagination
+        // Ambil data dengan pagination - PENTING: Gunakan pageName berbeda untuk tiap tab
         $pemilikMember = $queryMember->paginate(10, ['*'], 'member_page');
         $pemilikNonMember = $queryNonMember->paginate(10, ['*'], 'non_member_page');
+        $kendaraanTanpaPemilik = $queryKendaraanTanpaPemilik->paginate(10, ['*'], 'kendaraan_page');
 
         // Data untuk filter dropdown
         $memberLevels = MemberLevel::all();
 
+        // FIX: Deteksi active tab berdasarkan pagination query
+        $activeTab = 'member'; // default
+        if ($request->has('non_member_page')) {
+            $activeTab = 'non-member';
+        } elseif ($request->has('kendaraan_page')) {
+            $activeTab = 'kendaraan';
+        }
+
         return view('pages.master-data.data-member-kendaraan', compact(
             'pemilikMember',
             'pemilikNonMember',
-            'memberLevels'
+            'kendaraanTanpaPemilik',
+            'memberLevels',
+            'activeTab' // PASS active tab ke view
         ));
     }
 }

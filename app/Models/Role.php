@@ -48,7 +48,7 @@ class Role extends Model
     private function generatePermissionByRole(string $permission): bool
     {
         if ($this->isOwner()) {
-            return !in_array($permission, ['user_management', 'transaksi', 'master_data']); // Owner TIDAK bisa kelola user & transaksi masuk/keluar
+            return !in_array($permission, ['user_management', 'transaksi', 'master_data', 'activity_log']); // Owner TIDAK bisa kelola user & transaksi masuk/keluar
         }
 
         if ($this->isAdmin()) {
@@ -56,7 +56,7 @@ class Role extends Model
         }
 
         if ($this->isPetugas()) {
-            return !in_array($permission, ['user_management', 'master_data', 'activity_log']); // Petugas TIDAK bisa kelola user & master data
+            return !in_array($permission, ['user_management', 'master_data', 'activity_log', 'laporan']); // Petugas TIDAK bisa kelola user & master data
         }
 
         return false;
@@ -73,7 +73,7 @@ class Role extends Model
                 'transaksi' => false,          // Owner TIDAK bisa input transaksi
                 'master_data' => false,         // Owner kelola master data
                 'laporan' => true,             // Owner akses laporan
-                'activity_log' => true,        // Owner lihat activity log
+                'activity_log' => false,        // Owner tidak lihat activity log
                 'user_management' => false,    // Owner TIDAK kelola user
                 'change_password' => true,     // Owner ganti password
                 'detail_transaksi' => true,    // Owner lihat detail
@@ -98,7 +98,7 @@ class Role extends Model
             return [
                 'transaksi' => true,           // Petugas input transaksi
                 'master_data' => false,        // Petugas TIDAK kelola master
-                'laporan' => true,             // Petugas lihat laporan (read-only)
+                'laporan' => false,             // Petugas tidak lihat laporan (read-only)
                 'activity_log' => false,       // Petugas TIDAK lihat activity log
                 'user_management' => false,    // Petugas TIDAK kelola user
                 'change_password' => true,     // Petugas ganti password
