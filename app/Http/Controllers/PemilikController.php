@@ -11,9 +11,16 @@ class PemilikController extends Controller
 {
     use ActivityLogger;
     
-    public function index()
+    public function index(Request $request)
     {
-        $pemilik = Pemilik::all();
+        $query = Pemilik::query();
+        
+        // SEARCH by nama
+        if ($request->filled('search')) {
+            $query->where('nama', 'like', '%' . $request->search . '%');
+        }
+        
+        $pemilik = $query->get();
         return view('pemilik.index', compact('pemilik'));
     }
 

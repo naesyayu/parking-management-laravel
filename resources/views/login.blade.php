@@ -225,22 +225,6 @@
                     </button>
                 </form>
                 
-                <!-- Demo Accounts Info -->
-                <div class="demo-accounts">
-                    <div class="mb-2"><strong>Akun Demo:</strong></div>
-                    <div class="mb-1">
-                        <i class="fas fa-user-shield me-2"></i>
-                        <strong>Admin:</strong> admin1 / password123
-                    </div>
-                    <div>
-                        <i class="fas fa-user me-2"></i>
-                        <strong>Petugas:</strong> petugas1 / password123
-                    </div>
-                    <div>
-                        <i class="fas fa-user me-2"></i>
-                        <strong>Petugas:</strong> owner1 / password123
-                    </div>
-                </div>
             </div>
         </div>
         

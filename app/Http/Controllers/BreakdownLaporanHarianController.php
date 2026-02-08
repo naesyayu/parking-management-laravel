@@ -11,10 +11,10 @@ use App\Models\MetodePembayaran;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Symfony\Component\HttpFoundation\StreamedResponse; // ← FIX: Import ini
 
 class BreakdownLaporanHarianController extends Controller
 {
-    
     public function breakdown(Request $request)
     {
         $role = Auth::user()->role;
@@ -26,7 +26,6 @@ class BreakdownLaporanHarianController extends Controller
             'metodePembayaran'
         ])->where('status', 'out');
 
-        // Apply filters
         if ($request->filled('plat_nomor')) {
             $query->whereHas('kendaraan', fn($q) => 
                 $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%')
@@ -50,7 +49,6 @@ class BreakdownLaporanHarianController extends Controller
             );
         }
 
-        // Summary
         $summary = [
             'total_transaksi' => (clone $query)->count(),
             'total_pendapatan' => (clone $query)->sum('total_bayar') ?: 0,
@@ -58,7 +56,6 @@ class BreakdownLaporanHarianController extends Controller
             'avg' => (clone $query)->avg('total_bayar') ?: 0,
         ];
 
-        // Breakdowns
         $breakdownTipe = (clone $query)->get()
             ->filter(fn($t) => $t->kendaraan)
             ->groupBy('kendaraan.id_tipe')
@@ -79,12 +76,9 @@ class BreakdownLaporanHarianController extends Controller
             ]);
 
         $occupancy = $this->getOccupancy();
-
         $areas = AreaParkir::all();
         $metodes = MetodePembayaran::all();
         $tipes = TipeKendaraan::all();
-
-        // Chart data
         $transaksiPerHari = $this->getTransaksiPerHari($query, $request);
 
         $chartTipe = $breakdownTipe->map(fn($item) => [
@@ -115,16 +109,14 @@ class BreakdownLaporanHarianController extends Controller
     }
 
     /**
-     * EXPORT CSV (Admin only)
+     * EXPORT CSV - FIXED
      */
     public function export(Request $request)
     {
-        // Guard: Admin only
         if (!Auth::user()->role->isAdmin()) {
-            abort(403, 'Hanya Admin yang dapat export data');
+            abort(403, 'Hanya Admin yang dapat export');
         }
 
-        // Build query dengan filter yang sama seperti breakdown
         $query = TransaksiParkir::with([
             'kendaraan.tipe',
             'kendaraan.pemilik',
@@ -132,7 +124,6 @@ class BreakdownLaporanHarianController extends Controller
             'metodePembayaran'
         ])->where('status', 'out');
 
-        // Apply filters
         if ($request->filled('plat_nomor')) {
             $query->whereHas('kendaraan', fn($q) => 
                 $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%')
@@ -157,64 +148,50 @@ class BreakdownLaporanHarianController extends Controller
         }
 
         $transaksi = $query->orderBy('waktu_keluar', 'desc')->get();
-
-        // Generate filename
         $filename = 'Laporan_Breakdown_' . now()->format('Ymd_His') . '.csv';
-        
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename={$filename}",
-            'Pragma' => 'no-cache',
-            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires' => '0'
-        ];
 
-        $callback = function() use($transaksi) {
-            $file = fopen('php://output', 'w');
-            
-            // UTF-8 BOM for Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // Header
-            fputcsv($file, [
-                'Waktu Keluar',
-                'Plat Nomor',
-                'Tipe Kendaraan',
-                'Pemilik',
-                'Area',
-                'Metode Pembayaran',
-                'Durasi (jam)',
-                'Total Bayar',
-                'Diskon'
-            ]);
-            
-            // Data
-            foreach($transaksi as $t) {
+        // FIX: Gunakan StreamedResponse langsung
+        return new StreamedResponse(
+            function() use ($transaksi) {
+                $file = fopen('php://output', 'w');
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+                
                 fputcsv($file, [
-                    $t->waktu_keluar ? $t->waktu_keluar->format('d/m/Y H:i') : '-',
-                    $t->kendaraan->plat_nomor ?? '-',
-                    $t->kendaraan->tipe->tipe_kendaraan ?? '-',
-                    $t->kendaraan->pemilik->nama ?? '-',
-                    $t->areaParkir->lokasi ?? '-',
-                    $t->metodePembayaran->metode_bayar ?? '-',
-                    $t->durasi_jam ?? 0,
-                    $t->total_bayar,
-                    $t->diskon ?? 0
+                    'Waktu Keluar', 'Plat Nomor', 'Tipe', 'Pemilik', 
+                    'Area', 'Metode', 'Durasi (jam)', 'Total', 'Diskon'
                 ]);
-            }
+                
+                foreach($transaksi as $t) {
+                    fputcsv($file, [
+                        $t->waktu_keluar ? $t->waktu_keluar->format('d/m/Y H:i') : '-',
+                        $t->kendaraan->plat_nomor ?? '-',
+                        $t->kendaraan->tipe->tipe_kendaraan ?? '-',
+                        $t->kendaraan->pemilik->nama ?? '-',
+                        $t->areaParkir->lokasi ?? '-',
+                        $t->metodePembayaran->metode_bayar ?? '-',
+                        $t->durasi_jam ?? 0,
+                        $t->total_bayar,
+                        $t->diskon ?? 0
+                    ]);
+                }
 
-            // Summary
-            fputcsv($file, []);
-            fputcsv($file, ['===== RINGKASAN =====']);
-            fputcsv($file, ['Total Transaksi', $transaksi->count()]);
-            fputcsv($file, ['Total Pendapatan', $transaksi->sum('total_bayar')]);
-            fputcsv($file, ['Total Diskon', $transaksi->sum('diskon')]);
-            fputcsv($file, ['Pendapatan Bersih', $transaksi->sum('total_bayar') - $transaksi->sum('diskon')]);
-            
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+                fputcsv($file, []);
+                fputcsv($file, ['=== RINGKASAN ===']);
+                fputcsv($file, ['Total Transaksi', $transaksi->count()]);
+                fputcsv($file, ['Total Pendapatan', $transaksi->sum('total_bayar')]);
+                fputcsv($file, ['Total Diskon', $transaksi->sum('diskon')]);
+                
+                fclose($file);
+            },
+            200,
+            [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]
+        );
     }
 
     private function getTransaksiPerHari($query, $request)

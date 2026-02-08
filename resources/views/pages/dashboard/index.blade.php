@@ -30,10 +30,43 @@
             </div>
         </div>
     </div>
+
+    {{-- ALERT OCCUPANCY (NEW) --}}
+    @php
+        $alertAreas = $data['occupancy']->filter(function($occ) {
+            return $occ['alert_level'] === 'warning' || $occ['alert_level'] === 'full';
+        });
+    @endphp
+
+    @if($alertAreas->count() > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            @foreach($alertAreas as $occ)
+                @if($occ['alert_level'] === 'full')
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="fas fa-ban me-2"></i>
+                        <strong>PENUH!</strong> 
+                        Area {{ $occ['area'] }} - {{ $occ['tipe'] }} sudah penuh ({{ $occ['persentase'] }}%). 
+                        Tidak dapat menerima kendaraan baru.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @elseif($occ['alert_level'] === 'warning')
+                    <div class="alert alert-warning alert-dismissible fade show">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>PERINGATAN!</strong> 
+                        Area {{ $occ['area'] }} - {{ $occ['tipe'] }} hampir penuh ({{ $occ['persentase'] }}%). 
+                        Segera siapkan area alternatif.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    </div>
+    @endif
     
     {{-- STATISTIK CARDS --}}
     <div class="row g-4 mb-4">
-        {{-- Kendaraan Masuk Hari Ini --}}
+        {{-- Cards tetap sama ... --}}
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card stat-card-1">
                 <div class="card-body">
@@ -51,7 +84,6 @@
             </div>
         </div>
         
-        {{-- Kendaraan Keluar Hari Ini --}}
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card stat-card-2">
                 <div class="card-body">
@@ -69,7 +101,6 @@
             </div>
         </div>
         
-        {{-- Kendaraan Parkir Sekarang --}}
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card stat-card-3">
                 <div class="card-body">
@@ -87,7 +118,6 @@
             </div>
         </div>
         
-        {{-- Pendapatan Hari Ini --}}
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card stat-card-4">
                 <div class="card-body">
@@ -108,10 +138,9 @@
             </div>
         </div>
     </div>
-    
-    {{-- CHARTS --}}
+
+    {{-- REST OF CONTENT SAMA ... (Charts, Occupancy, Transaksi) --}}
     <div class="row g-4 mb-4">
-        {{-- Chart Transaksi 7 Hari --}}
         <div class="col-lg-8">
             <div class="card shadow border-0">
                 <div class="card-header bg-white py-3">
@@ -125,7 +154,6 @@
             </div>
         </div>
         
-        {{-- Breakdown Tipe Kendaraan --}}
         <div class="col-lg-4">
             <div class="card shadow border-0">
                 <div class="card-header bg-white py-3">
@@ -140,9 +168,7 @@
         </div>
     </div>
     
-    {{-- OCCUPANCY & METODE PEMBAYARAN --}}
     <div class="row g-4 mb-4">
-        {{-- Occupancy --}}
         <div class="col-lg-6">
             <div class="card shadow border-0">
                 <div class="card-header bg-white py-3">
@@ -161,11 +187,17 @@
                             </span>
                         </div>
                         <div class="progress" style="height: 20px;">
-                            <div class="progress-bar {{ $occ['persentase'] > 80 ? 'bg-danger' : ($occ['persentase'] > 50 ? 'bg-warning' : 'bg-success') }}" 
+                            <div class="progress-bar {{ $occ['alert_level'] === 'full' ? 'bg-danger' : ($occ['alert_level'] === 'warning' ? 'bg-warning' : 'bg-success') }}" 
                                  style="width: {{ $occ['persentase'] }}%">
                                 {{ $occ['tersedia'] }} tersedia
                             </div>
                         </div>
+                        {{-- Alert Badge --}}
+                        @if($occ['alert_level'] === 'full')
+                            <small class="badge bg-danger mt-1">PENUH</small>
+                        @elseif($occ['alert_level'] === 'warning')
+                            <small class="badge bg-warning mt-1">HAMPIR PENUH</small>
+                        @endif
                     </div>
                     @empty
                     <p class="text-muted text-center">Tidak ada data occupancy</p>
@@ -174,7 +206,6 @@
             </div>
         </div>
         
-        {{-- Metode Pembayaran --}}
         <div class="col-lg-6">
             <div class="card shadow border-0">
                 <div class="card-header bg-white py-3">
@@ -212,7 +243,6 @@
         </div>
     </div>
     
-    {{-- TRANSAKSI TERBARU --}}
     <div class="row">
         <div class="col-12">
             <div class="card shadow border-0">
@@ -265,11 +295,42 @@
 </div>
 
 @push('scripts')
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
+// ========================================
+// LOGIN SUCCESS NOTIFICATION (TOAST)
+// ========================================
+@if(session('login_success'))
+    const username = "{{ session('username') ?? Auth::user()->username }}";
+    
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `${username} berhasil login!`,
+        text: `Selamat datang ${username}!`,
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+    
+    // OPTIONAL: Play sound
+    // const audio = new Audio('/sounds/notification.mp3');
+    // audio.play().catch(e => console.log('Audio play failed:', e));
+@endif
+
+// ========================================
 // Real-time Clock
+// ========================================
 function updateJam() {
     var now = new Date();
     var jam = String(now.getHours()).padStart(2, '0');
@@ -287,7 +348,9 @@ function updateJam() {
 setInterval(updateJam, 1000);
 updateJam();
 
+// ========================================
 // Chart Transaksi 7 Hari
+// ========================================
 const ctxTransaksi = document.getElementById('chartTransaksi').getContext('2d');
 new Chart(ctxTransaksi, {
     type: 'line',
@@ -318,7 +381,9 @@ new Chart(ctxTransaksi, {
     }
 });
 
+// ========================================
 // Chart Tipe Kendaraan (Doughnut)
+// ========================================
 const ctxTipe = document.getElementById('chartTipe').getContext('2d');
 new Chart(ctxTipe, {
     type: 'doughnut',

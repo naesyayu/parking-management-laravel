@@ -10,11 +10,19 @@ use Illuminate\Http\Request;
 class KendaraanController extends Controller
 {
     //
-    public function index()
+    public function index(Request $request)
     {
-        $kendaraans = Kendaraan::with(['pemilik', 'tipe'])->get();
+        $query = Kendaraan::with(['pemilik', 'tipe']);
+        
+        // SEARCH by plat_nomor
+        if ($request->filled('search')) {
+            $query->where('plat_nomor', 'like', '%' . $request->search . '%');
+        }
+        
+        $kendaraans = $query->get();
         return view('data-kendaraan.index', compact('kendaraans'));
     }
+
 
     public function create()
     {

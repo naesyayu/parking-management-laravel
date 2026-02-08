@@ -12,9 +12,18 @@ class MemberController extends Controller
 {
     use ActivityLogger; 
     
-    public function index()
+    public function index(Request $request)
     {
-        $members = Member::with(['pemilik', 'level'])->get();
+        $query = Member::with(['pemilik', 'level']);
+        
+        // SEARCH by nama pemilik
+        if ($request->filled('search')) {
+            $query->whereHas('pemilik', function($q) use ($request) {
+                $q->where('nama', 'like', '%' . $request->search . '%');
+            });
+        }
+        
+        $members = $query->get();
         return view('member.index', compact('members'));
     }
 

@@ -15,7 +15,6 @@ class AuthController extends Controller
      */
     public function showLoginForm()
     {
-        // Redirect jika sudah login
         if (Auth::check()) {
             return redirect()->route('dashboard.index');
         }
@@ -33,10 +32,8 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        // Ambil credentials
         $credentials = $request->only('username', 'password');
 
-        // Cek apakah user ada
         $user = User::where('username', $credentials['username'])->first();
 
         if (!$user) {
@@ -45,23 +42,24 @@ class AuthController extends Controller
                 ->with('error', 'Username tidak ditemukan');
         }
 
-        // Cek status user
         if ($user->status !== 'aktif') {
             return back()
                 ->withInput($request->only('username'))
                 ->with('error', 'Akun Anda tidak aktif. Hubungi administrator');
         }
 
-        // Attempt login
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
             // Log activity
             ActivityLog::log('login', 'User berhasil login');
 
-            // Redirect ke dashboard
+            // NOTIFIKASI: Simpan username untuk ditampilkan di dashboard
+            $username = Auth::user()->username;
+            
             return redirect()->route('dashboard.index')
-                ->with('success', 'Selamat datang, ' . Auth::user()->username . '!');
+                ->with('login_success', true)
+                ->with('username', $username);
         }
 
         return back()
@@ -74,7 +72,6 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Log activity sebelum logout
         ActivityLog::log('logout', 'User logout');
 
         Auth::logout();

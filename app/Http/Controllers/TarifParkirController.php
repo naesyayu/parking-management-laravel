@@ -14,11 +14,14 @@ class TarifParkirController extends Controller
     
     public function index()
     {
-        $tarifParkir = TarifParkir::with(['detailParkir', 'tipeKendaraan'])
-            ->orderBy('id_tarif', 'desc')
-            ->get();
-
-        return view('tarif-parkir.index', compact('tarifParkir'));
+        // GROUP by tipe kendaraan
+        $tipes = TipeKendaraan::with([
+            'tarifParkir' => function($q) {
+                $q->with('detailParkir')->orderBy('id_tarif_detail');
+            }
+        ])->get();
+        
+        return view('tarif-parkir.index', compact('tipes'));
     }
 
     public function create()
