@@ -166,6 +166,8 @@ Route::middleware(['auth', 'nocache'])->group(function () {
         Route::get('/parkir/masuk', [TransaksiMasukController::class, 'index'])->name('parkir.masuk');
         Route::post('/parkir/masuk', [TransaksiMasukController::class, 'store'])->name('parkir.masuk.store');
         Route::get('/parkir/autocomplete-plat', [TransaksiMasukController::class, 'autocompletePlat'])->name('parkir.masuk.autocomplete.plat');
+        Route::post('/parkir/tiket-masuk/cetak', [TransaksiMasukController::class, 'cetakTiket'])->name('parkir.tiket-masuk.cetak');
+    
         
         // PARKIR KELUAR
         Route::get('/parkir/keluar', [TransaksiKeluarController::class, 'index'])->name('parkir.keluar');

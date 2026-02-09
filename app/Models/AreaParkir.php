@@ -3,27 +3,48 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AreaParkir extends Model
 {
-    use SoftDeletes;
-
     protected $table = 'area_parkir';
     protected $primaryKey = 'id_area';
+    public $timestamps = false;
 
     protected $fillable = [
-        'kode_area',
         'lokasi',
-        'foto_lokasi',
+        'keterangan',
     ];
 
+    // ========================================
+    // BOOT METHOD - CASCADE DELETE
+    // ========================================
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Saat area parkir dihapus, hapus juga data terkait
+        static::deleting(function($areaParkir) {
+            // Hapus area_kapasitas yang terkait
+            $areaParkir->kapasitas()->delete();
+            
+            // Log cascade delete
+            \Log::info('Cascade delete area_kapasitas for area_parkir: ' . $areaParkir->id_area, [
+                'lokasi' => $areaParkir->lokasi,
+                'deleted_kapasitas_count' => $areaParkir->kapasitas()->count()
+            ]);
+        });
+    }
+
+    // ========================================
+    // RELATIONSHIPS
+    // ========================================
+    
     public function kapasitas()
     {
         return $this->hasMany(AreaKapasitas::class, 'id_area', 'id_area');
     }
 
-    public function transaksiParkir()
+    public function transaksi()
     {
         return $this->hasMany(TransaksiParkir::class, 'id_area', 'id_area');
     }

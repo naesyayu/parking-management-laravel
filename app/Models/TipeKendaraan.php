@@ -16,6 +16,30 @@ class TipeKendaraan extends Model
         'deskripsi_tipe',
     ];
 
+    // ========================================
+    // BOOT METHOD - CASCADE DELETE
+    // ========================================
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Saat tipe kendaraan dihapus, hapus juga data terkait
+        static::deleting(function($tipeKendaraan) {
+            // Hapus area_kapasitas yang terkait
+            $tipeKendaraan->areaKapasitas()->delete();
+            
+            // Log cascade delete
+            \Log::info('Cascade delete area_kapasitas for tipe_kendaraan: ' . $tipeKendaraan->id_tipe, [
+                'tipe' => $tipeKendaraan->tipe_kendaraan,
+                'deleted_kapasitas_count' => $tipeKendaraan->areaKapasitas()->count()
+            ]);
+        });
+    }
+
+    // ========================================
+    // RELATIONSHIPS
+    // ========================================
+    
     public function kendaraan()
     {
         return $this->hasMany(Kendaraan::class, 'id_tipe', 'id_tipe');
@@ -30,5 +54,4 @@ class TipeKendaraan extends Model
     {
         return $this->hasMany(TarifParkir::class, 'id_tipe', 'id_tipe');
     }
-
 }

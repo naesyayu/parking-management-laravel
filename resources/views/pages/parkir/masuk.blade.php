@@ -54,7 +54,7 @@
                                 id="platInput"
                                 name="plat_nomor"
                                 class="form-control form-control-lg"
-                                placeholder="Ketik minimal 2 karakter"
+                                placeholder="Ketik minimal 1 atau 2 karakter"
                                 value="{{ old('plat_nomor') }}"
                                 autocomplete="off"
                                 required

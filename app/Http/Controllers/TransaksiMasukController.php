@@ -7,6 +7,7 @@ use App\Models\TransaksiParkir;
 use App\Models\Kendaraan;
 use App\Models\AreaKapasitas;
 use App\Models\TipeKendaraan;
+use App\Models\ActivityLog; // ← IMPORT ActivityLog
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -36,28 +37,17 @@ class TransaksiMasukController extends Controller
         }
     }
 
-    /**
-     * AUTOCOMPLETE PLAT NOMOR
-     * PERBAIKAN:
-     * - Minimal 1 karakter (tidak perlu 2)
-     * - SPASI TIDAK DIHAPUS (karena di database ada spasi)
-     * - Hanya uppercase
-     */
     public function autocompletePlat(Request $request)
     {
         try {
-            // Ambil keyword, trim whitespace di awal/akhir, uppercase
-            // TIDAK menghapus spasi di tengah!
             $keyword = strtoupper(trim($request->get('q', '')));
 
-            // PERBAIKAN: Minimal 1 karakter saja (bukan 2)
             if (strlen($keyword) < 1) {
                 return response()->json([]);
             }
 
             Log::info('Autocomplete search:', ['keyword' => $keyword]);
 
-            // Cari kendaraan dengan plat yang match
             $data = Kendaraan::with('tipe')
                 ->where('plat_nomor', 'like', "%{$keyword}%")
                 ->where('status', 'aktif')
@@ -86,7 +76,6 @@ class TransaksiMasukController extends Controller
         Log::info('=== TRANSAKSI MASUK START ===');
         Log::info('Request data:', $request->all());
 
-        // Validasi
         $request->validate([
             'plat_nomor' => 'required|string|max:13',
             'id_tipe' => 'required|exists:tipe_kendaraan,id_tipe',
@@ -95,9 +84,6 @@ class TransaksiMasukController extends Controller
         DB::beginTransaction();
 
         try {
-            // PERBAIKAN: Normalisasi plat nomor
-            // HANYA uppercase, TIDAK menghapus spasi
-            // Trim hanya whitespace di awal/akhir
             $platNomor = strtoupper(trim($request->plat_nomor));
             
             Log::info('Normalized plat:', ['plat' => $platNomor, 'length' => strlen($platNomor)]);
@@ -118,7 +104,6 @@ class TransaksiMasukController extends Controller
             $kendaraan = Kendaraan::where('plat_nomor', $platNomor)->first();
 
             if ($kendaraan) {
-                // Kendaraan sudah ada
                 if ($kendaraan->id_tipe != $request->id_tipe) {
                     DB::rollBack();
                     return back()
@@ -127,7 +112,6 @@ class TransaksiMasukController extends Controller
                 }
                 Log::info('Using existing vehicle:', ['id' => $kendaraan->id_kendaraan]);
             } else {
-                // Kendaraan baru - simpan dengan spasi seperti yang diinput
                 $kendaraan = Kendaraan::create([
                     'plat_nomor' => $platNomor,
                     'id_tipe' => $request->id_tipe,
@@ -157,7 +141,7 @@ class TransaksiMasukController extends Controller
             $kodeTiket = $this->generateKodeTiket();
             Log::info('Generated ticket:', ['kode' => $kodeTiket]);
 
-            // Handle user ID dengan aman
+            // Handle user ID
             $userId = null;
             try {
                 if (auth()->check()) {
@@ -188,6 +172,25 @@ class TransaksiMasukController extends Controller
 
             // Kurangi kapasitas
             $kapasitas->decrement('kapasitas');
+
+            // ========================================
+            // LOG ACTIVITY - TRANSAKSI MASUK
+            // ========================================
+            ActivityLog::create([
+                'id_user' => $userId,
+                'action' => 'transaksi_masuk',
+                'description' => "Transaksi masuk: {$platNomor} ({$kendaraan->tipe->tipe_kendaraan}) - {$kapasitas->area->lokasi}",
+                'id_transaksi' => $transaksi->id_transaksi,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'metadata' => json_encode([
+                    'kode_tiket' => $kodeTiket,
+                    'plat_nomor' => $platNomor,
+                    'tipe_kendaraan' => $kendaraan->tipe->tipe_kendaraan,
+                    'area' => $kapasitas->area->lokasi,
+                    'waktu_masuk' => now()->format('Y-m-d H:i:s'),
+                ])
+            ]);
 
             DB::commit();
             Log::info('Transaction committed');
@@ -228,8 +231,39 @@ class TransaksiMasukController extends Controller
     }
 
     /**
-     * Generate QR Code dengan fallback
+     * CETAK TIKET - LOG ACTIVITY
      */
+    public function cetakTiket(Request $request)
+    {
+        try {
+            $idTransaksi = $request->input('id_transaksi');
+            
+            $transaksi = TransaksiParkir::with(['kendaraan.tipe', 'areaParkir'])
+                ->findOrFail($idTransaksi);
+
+            // LOG ACTIVITY - CETAK STRUK
+            ActivityLog::create([
+                'id_user' => auth()->id(),
+                'action' => 'cetak_struk',
+                'description' => "Cetak ulang tiket: {$transaksi->kode_tiket} - {$transaksi->kendaraan->plat_nomor}",
+                'id_transaksi' => $transaksi->id_transaksi,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'metadata' => json_encode([
+                    'kode_tiket' => $transaksi->kode_tiket,
+                    'plat_nomor' => $transaksi->kendaraan->plat_nomor,
+                    'cetak_ulang' => true,
+                ])
+            ]);
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            Log::error('Cetak tiket error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
     private function generateQrCode($kodeTiket)
     {
         try {
@@ -264,9 +298,6 @@ class TransaksiMasukController extends Controller
         }
     }
 
-    /**
-     * Generate placeholder QR
-     */
     private function generatePlaceholderQr($text)
     {
         $img = imagecreate(300, 300);
@@ -284,9 +315,6 @@ class TransaksiMasukController extends Controller
         return base64_encode($imageData);
     }
 
-    /**
-     * Generate kode tiket unik
-     */
     private function generateKodeTiket()
     {
         do {

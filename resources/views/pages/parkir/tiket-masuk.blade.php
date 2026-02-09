@@ -104,7 +104,7 @@
                                     <i class="fas fa-user"></i> Petugas
                                 </td>
                                 <td class="text-end">
-                                    {{ $transaksi->user->name }}
+                                    {{ $transaksi->user->username }}
                                 </td>
                             </tr>
                             @endif
@@ -234,9 +234,32 @@ function updateDurasi() {
 setInterval(updateDurasi, 1000);
 updateDurasi();
 
-// FUNGSI CETAK
+// ========================================
+// FUNGSI CETAK - WITH ACTIVITY LOG
+// ========================================
 function cetakTiket() {
-    window.print();
+    // LOG ACTIVITY - Cetak Struk
+    fetch('{{ route('parkir.tiket-masuk.cetak') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            id_transaksi: {{ $transaksi->id_transaksi }}
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Activity logged:', data);
+        // Cetak
+        window.print();
+    })
+    .catch(error => {
+        console.error('Log error:', error);
+        // Tetap cetak meski log gagal
+        window.print();
+    });
 }
 
 console.log('Tiket loaded successfully');

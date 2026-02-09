@@ -143,7 +143,7 @@ class ActivityLogController extends Controller
     {
         $log = ActivityLog::with(['user', 'transaksi.kendaraan'])->findOrFail($id);
 
-        return view('activity-log.show', compact('log'));
+        return view('pages.activity-log.show', compact('log'));
     }
 
     /**
