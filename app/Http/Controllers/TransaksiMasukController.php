@@ -7,7 +7,7 @@ use App\Models\TransaksiParkir;
 use App\Models\Kendaraan;
 use App\Models\AreaKapasitas;
 use App\Models\TipeKendaraan;
-use App\Models\ActivityLog; // ← IMPORT ActivityLog
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -79,6 +79,7 @@ class TransaksiMasukController extends Controller
         $request->validate([
             'plat_nomor' => 'required|string|max:13',
             'id_tipe' => 'required|exists:tipe_kendaraan,id_tipe',
+            'id_area_manual' => 'nullable|exists:area_parkir,id_area',
         ]);
 
         DB::beginTransaction();
@@ -121,21 +122,44 @@ class TransaksiMasukController extends Controller
                 Log::info('Created new vehicle:', ['id' => $kendaraan->id_kendaraan, 'plat' => $platNomor]);
             }
 
-            // Cari slot parkir
-            $kapasitas = AreaKapasitas::lockForUpdate()
-                ->where('id_tipe', $request->id_tipe)
-                ->where('kapasitas', '>', 0)
-                ->orderBy('kapasitas', 'desc')
-                ->first();
-
-            if (!$kapasitas) {
-                DB::rollBack();
-                return back()
-                    ->withInput()
-                    ->with('error', 'Slot parkir penuh untuk tipe ini');
+            // ========================================
+            // CARI SLOT PARKIR - WITH AREA SELECTION
+            // ========================================
+            if ($request->filled('id_area_manual')) {
+                // User selected specific area
+                $kapasitas = AreaKapasitas::lockForUpdate()
+                    ->where('id_area', $request->id_area_manual)
+                    ->where('id_tipe', $request->id_tipe)
+                    ->where('kapasitas', '>', 0)
+                    ->first();
+                
+                if (!$kapasitas) {
+                    DB::rollBack();
+                    return back()
+                        ->withInput()
+                        ->with('error', 'Slot parkir penuh untuk area yang dipilih');
+                }
+            } else {
+                // Auto select area dengan slot paling banyak
+                $kapasitas = AreaKapasitas::lockForUpdate()
+                    ->where('id_tipe', $request->id_tipe)
+                    ->where('kapasitas', '>', 0)
+                    ->orderBy('kapasitas', 'desc')
+                    ->first();
+                
+                if (!$kapasitas) {
+                    DB::rollBack();
+                    return back()
+                        ->withInput()
+                        ->with('error', 'Slot parkir penuh untuk tipe ini');
+                }
             }
 
-            Log::info('Slot found:', ['area' => $kapasitas->id_area]);
+            Log::info('Slot found:', [
+                'area' => $kapasitas->id_area, 
+                'lokasi' => $kapasitas->area->lokasi,
+                'remaining' => $kapasitas->kapasitas
+            ]);
 
             // Generate kode tiket
             $kodeTiket = $this->generateKodeTiket();
@@ -173,9 +197,7 @@ class TransaksiMasukController extends Controller
             // Kurangi kapasitas
             $kapasitas->decrement('kapasitas');
 
-            // ========================================
             // LOG ACTIVITY - TRANSAKSI MASUK
-            // ========================================
             ActivityLog::create([
                 'id_user' => $userId,
                 'action' => 'transaksi_masuk',
@@ -230,9 +252,6 @@ class TransaksiMasukController extends Controller
         }
     }
 
-    /**
-     * CETAK TIKET - LOG ACTIVITY
-     */
     public function cetakTiket(Request $request)
     {
         try {
@@ -241,7 +260,6 @@ class TransaksiMasukController extends Controller
             $transaksi = TransaksiParkir::with(['kendaraan.tipe', 'areaParkir'])
                 ->findOrFail($idTransaksi);
 
-            // LOG ACTIVITY - CETAK STRUK
             ActivityLog::create([
                 'id_user' => auth()->id(),
                 'action' => 'cetak_struk',

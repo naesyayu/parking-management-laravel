@@ -11,7 +11,7 @@ use App\Models\MetodePembayaran;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Symfony\Component\HttpFoundation\StreamedResponse; // ← FIX: Import ini
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BreakdownLaporanHarianController extends Controller
 {
@@ -109,7 +109,9 @@ class BreakdownLaporanHarianController extends Controller
     }
 
     /**
-     * EXPORT CSV - FIXED
+     * ========================================
+     * EXPORT EXCEL - PROFESSIONAL FORMAT
+     * ========================================
      */
     public function export(Request $request)
     {
@@ -117,6 +119,7 @@ class BreakdownLaporanHarianController extends Controller
             abort(403, 'Hanya Admin yang dapat export');
         }
 
+        // Build query with same filters
         $query = TransaksiParkir::with([
             'kendaraan.tipe',
             'kendaraan.pemilik',
@@ -148,38 +151,229 @@ class BreakdownLaporanHarianController extends Controller
         }
 
         $transaksi = $query->orderBy('waktu_keluar', 'desc')->get();
+        
+        // Calculate breakdown data
+        $breakdownTipe = $transaksi
+            ->filter(fn($t) => $t->kendaraan)
+            ->groupBy('kendaraan.id_tipe')
+            ->map(fn($items) => [
+                'tipe' => $items->first()->kendaraan->tipe->tipe_kendaraan ?? 'Unknown',
+                'jumlah' => $items->count(),
+                'revenue' => $items->sum('total_bayar'),
+                'avg' => round($items->avg('total_bayar'), 0),
+            ]);
+
+        $breakdownMetode = $transaksi
+            ->groupBy('id_metode')
+            ->map(fn($items) => [
+                'metode' => $items->first()->metodePembayaran->metode_bayar ?? 'Unknown',
+                'jumlah' => $items->count(),
+                'revenue' => $items->sum('total_bayar'),
+                'avg' => round($items->avg('total_bayar'), 0),
+            ]);
+
         $filename = 'Laporan_Breakdown_' . now()->format('Ymd_His') . '.csv';
 
-        // FIX: Gunakan StreamedResponse langsung
         return new StreamedResponse(
-            function() use ($transaksi) {
+            function() use ($transaksi, $breakdownTipe, $breakdownMetode, $request) {
                 $file = fopen('php://output', 'w');
-                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+                
+                // UTF-8 BOM untuk Excel
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                
+                // ========================================
+                // SECTION 1: HEADER LAPORAN
+                // ========================================
+                fputcsv($file, ['LAPORAN BREAKDOWN TRANSAKSI PARKIR'], ';');
+                fputcsv($file, ['Sistem Parkir Management'], ';');
+                fputcsv($file, ['Dicetak: ' . now()->format('d/m/Y H:i:s')], ';');
+                fputcsv($file, ['User: ' . Auth::user()->username], ';');
+                fputcsv($file, [], ';'); // Empty row
+                
+                // Filter Information
+                if ($request->filled('start_date') || $request->filled('end_date')) {
+                    $periode = '';
+                    if ($request->filled('start_date')) {
+                        $periode .= 'Dari: ' . Carbon::parse($request->start_date)->format('d/m/Y');
+                    }
+                    if ($request->filled('end_date')) {
+                        $periode .= ' Sampai: ' . Carbon::parse($request->end_date)->format('d/m/Y');
+                    }
+                    fputcsv($file, ['Periode: ' . $periode], ';');
+                }
+                if ($request->filled('id_area')) {
+                    $area = AreaParkir::find($request->id_area);
+                    fputcsv($file, ['Area: ' . ($area->nama_area ?? 'Semua Area')], ';');
+                }
+                if ($request->filled('id_tipe')) {
+                    $tipe = TipeKendaraan::find($request->id_tipe);
+                    fputcsv($file, ['Tipe: ' . ($tipe->tipe_kendaraan ?? 'Semua Tipe')], ';');
+                }
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
+                fputcsv($file, [], ';'); // Empty row
+                
+                // ========================================
+                // SECTION 2: RINGKASAN UTAMA
+                // ========================================
+                fputcsv($file, ['RINGKASAN LAPORAN'], ';');
+                fputcsv($file, [str_repeat('-', 80)], ';');
+                fputcsv($file, [], ';');
+                
+                fputcsv($file, ['Total Transaksi', $transaksi->count() . ' transaksi'], ';');
+                fputcsv($file, ['Total Pendapatan', 'Rp ' . number_format($transaksi->sum('total_bayar'), 0, ',', '.')], ';');
+                fputcsv($file, ['Total Diskon', 'Rp ' . number_format($transaksi->sum('diskon'), 0, ',', '.')], ';');
+                fputcsv($file, ['Rata-rata Per Transaksi', 'Rp ' . number_format($transaksi->avg('total_bayar'), 0, ',', '.')], ';');
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
+                fputcsv($file, [], ';'); // Empty row
+                
+                // ========================================
+                // SECTION 3: BREAKDOWN PER TIPE KENDARAAN
+                // ========================================
+                fputcsv($file, ['BREAKDOWN PER TIPE KENDARAAN'], ';');
+                fputcsv($file, [str_repeat('-', 80)], ';');
+                fputcsv($file, [], ';');
+                
+                fputcsv($file, ['No', 'Tipe Kendaraan', 'Jumlah Transaksi', 'Total Revenue', 'Rata-rata'], ';');
+                fputcsv($file, [str_repeat('-', 5), str_repeat('-', 20), str_repeat('-', 20), str_repeat('-', 20), str_repeat('-', 20)], ';');
+                
+                $no = 1;
+                foreach($breakdownTipe as $item) {
+                    fputcsv($file, [
+                        $no++,
+                        $item['tipe'],
+                        $item['jumlah'] . ' transaksi',
+                        'Rp ' . number_format($item['revenue'], 0, ',', '.'),
+                        'Rp ' . number_format($item['avg'], 0, ',', '.')
+                    ], ';');
+                }
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
+                fputcsv($file, [], ';'); // Empty row
+                
+                // ========================================
+                // SECTION 4: BREAKDOWN PER METODE PEMBAYARAN
+                // ========================================
+                fputcsv($file, ['BREAKDOWN PER METODE PEMBAYARAN'], ';');
+                fputcsv($file, [str_repeat('-', 80)], ';');
+                fputcsv($file, [], ';');
+                
+                fputcsv($file, ['No', 'Metode Pembayaran', 'Jumlah Transaksi', 'Total Revenue', 'Rata-rata'], ';');
+                fputcsv($file, [str_repeat('-', 5), str_repeat('-', 20), str_repeat('-', 20), str_repeat('-', 20), str_repeat('-', 20)], ';');
+                
+                $no = 1;
+                foreach($breakdownMetode as $item) {
+                    fputcsv($file, [
+                        $no++,
+                        $item['metode'],
+                        $item['jumlah'] . ' transaksi',
+                        'Rp ' . number_format($item['revenue'], 0, ',', '.'),
+                        'Rp ' . number_format($item['avg'], 0, ',', '.')
+                    ], ';');
+                }
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
+                fputcsv($file, [], ';'); // Empty row
+                
+                // ========================================
+                // SECTION 5: DETAIL TRANSAKSI
+                // ========================================
+                fputcsv($file, ['DETAIL TRANSAKSI'], ';');
+                fputcsv($file, [str_repeat('-', 80)], ';');
+                fputcsv($file, [], ';');
+                
+                // Header dengan width yang lebih baik
+                fputcsv($file, [
+                    'No',
+                    'Kode Tiket',
+                    'Waktu Masuk',
+                    'Waktu Keluar',
+                    'Plat Nomor',
+                    'Tipe',
+                    'Pemilik',
+                    'Area',
+                    'Metode Bayar',
+                    'Durasi (jam)',
+                    'Total Bayar',
+                    'Diskon',
+                    'Net'
+                ], ';');
                 
                 fputcsv($file, [
-                    'Waktu Keluar', 'Plat Nomor', 'Tipe', 'Pemilik', 
-                    'Area', 'Metode', 'Durasi (jam)', 'Total', 'Diskon'
-                ]);
+                    str_repeat('-', 5),
+                    str_repeat('-', 18),
+                    str_repeat('-', 17),
+                    str_repeat('-', 17),
+                    str_repeat('-', 12),
+                    str_repeat('-', 12),
+                    str_repeat('-', 20),
+                    str_repeat('-', 20),
+                    str_repeat('-', 15),
+                    str_repeat('-', 12),
+                    str_repeat('-', 15),
+                    str_repeat('-', 12),
+                    str_repeat('-', 15)
+                ], ';');
                 
+                // Data rows
+                $no = 1;
                 foreach($transaksi as $t) {
                     fputcsv($file, [
+                        $no++,
+                        $t->kode_tiket ?? '-',
+                        $t->waktu_masuk ? $t->waktu_masuk->format('d/m/Y H:i') : '-',
                         $t->waktu_keluar ? $t->waktu_keluar->format('d/m/Y H:i') : '-',
                         $t->kendaraan->plat_nomor ?? '-',
                         $t->kendaraan->tipe->tipe_kendaraan ?? '-',
-                        $t->kendaraan->pemilik->nama ?? '-',
-                        $t->areaParkir->lokasi ?? '-',
+                        $t->kendaraan->pemilik->nama ?? 'Umum',
+                        $t->areaParkir->nama_area ?? '-',
                         $t->metodePembayaran->metode_bayar ?? '-',
                         $t->durasi_jam ?? 0,
                         $t->total_bayar,
-                        $t->diskon ?? 0
-                    ]);
+                        $t->diskon ?? 0,
+                        ($t->total_bayar - ($t->diskon ?? 0))
+                    ], ';');
                 }
-
-                fputcsv($file, []);
-                fputcsv($file, ['=== RINGKASAN ===']);
-                fputcsv($file, ['Total Transaksi', $transaksi->count()]);
-                fputcsv($file, ['Total Pendapatan', $transaksi->sum('total_bayar')]);
-                fputcsv($file, ['Total Diskon', $transaksi->sum('diskon')]);
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [str_repeat('=', 5), str_repeat('=', 100)], ';');
+                
+                // Subtotal
+                fputcsv($file, [
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    'SUBTOTAL:',
+                    $transaksi->sum('total_bayar'),
+                    $transaksi->sum('diskon'),
+                    ($transaksi->sum('total_bayar') - $transaksi->sum('diskon'))
+                ], ';');
+                
+                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
+                fputcsv($file, [], ';'); // Empty row
+                
+                // ========================================
+                // SECTION 6: FOOTER
+                // ========================================
+                fputcsv($file, ['CATATAN:'], ';');
+                fputcsv($file, ['- Laporan ini dihasilkan secara otomatis oleh sistem'], ';');
+                fputcsv($file, ['- Data yang ditampilkan adalah transaksi yang sudah selesai (status: OUT)'], ';');
+                fputcsv($file, ['- Total Bayar sudah termasuk diskon member jika ada'], ';');
+                fputcsv($file, ['- Net = Total Bayar - Diskon'], ';');
+                fputcsv($file, [], ';');
+                fputcsv($file, ['Dicetak oleh: ' . Auth::user()->username . ' pada ' . now()->format('d/m/Y H:i:s')], ';');
                 
                 fclose($file);
             },
@@ -262,7 +456,7 @@ class BreakdownLaporanHarianController extends Controller
                     : 0;
 
                 return [
-                    'area' => $firstItem->area->lokasi,
+                    'area' => $firstItem->area->nama_area,
                     'total' => $totalSlot,
                     'tersedia' => $totalKapasitas,
                     'terpakai' => $totalTerpakai,

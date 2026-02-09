@@ -197,7 +197,7 @@ class TransaksiKeluarController extends Controller
                     'plat_nomor' => $transaksi->kendaraan->plat_nomor,
                     'tipe_kendaraan' => $transaksi->kendaraan->tipe->tipe_kendaraan,
                     'pemilik' => $transaksi->kendaraan->pemilik->nama ?? 'Tidak Diketahui',
-                    'area' => $transaksi->areaParkir->lokasi,
+                    'area' => $transaksi->areaParkir->nama_area ?? 'N/A',
                     
                     'waktu_masuk' => $waktuMasuk->format('d/m/Y H:i:s'),
                     'waktu_keluar' => $waktuKeluar->format('d/m/Y H:i:s'),

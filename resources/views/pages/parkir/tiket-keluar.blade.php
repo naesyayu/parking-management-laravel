@@ -61,7 +61,7 @@
                             </tr>
                             <tr>
                                 <td>Area Parkir</td>
-                                <td>: {{ $transaksi->areaParkir->lokasi }}</td>
+                                <td>: {{ $transaksi->areaParkir->nama_area }}</td>
                             </tr>
                         </table>
                     </div>

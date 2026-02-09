@@ -7,17 +7,26 @@ use App\Models\AreaParkir;
 use App\Models\TipeKendaraan;
 use Illuminate\Http\Request;
 use App\Traits\ActivityLogger;
+use Illuminate\Support\Facades\DB;
 
 class AreaKapasitasController extends Controller
 {
     use ActivityLogger;
     
+    /**
+     * INDEX - Group by Area
+     */
     public function index()
     {
-        $data = AreaKapasitas::with(['area', 'tipe'])->get();
-        return view('area-kapasitas.index', compact('data'));
+        // Group kapasitas by area
+        $areas = AreaParkir::with(['kapasitas.tipe'])->get();
+        
+        return view('area-kapasitas.index', compact('areas'));
     }
 
+    /**
+     * CREATE - Show form to input all vehicle types for one area
+     */
     public function create()
     {
         $areas = AreaParkir::all();
@@ -26,94 +35,167 @@ class AreaKapasitasController extends Controller
         return view('area-kapasitas.create', compact('areas', 'tipes'));
     }
 
+    /**
+     * STORE - Save multiple vehicle type capacities for one area
+     */
     public function store(Request $request)
     {
         $request->validate([
             'id_area' => 'required|exists:area_parkir,id_area',
-            'id_tipe' => 'required|exists:tipe_kendaraan,id_tipe',
-            'kapasitas' => 'required|integer|min:0',
+            'kapasitas' => 'required|array',
+            'kapasitas.*' => 'required|integer|min:0',
         ]);
 
-        $areaKapasitas = AreaKapasitas::create([
-            'id_area' => $request->id_area,
-            'id_tipe' => $request->id_tipe,
-            'kapasitas' => $request->kapasitas,
-        ]);
+        DB::beginTransaction();
         
-        // Load relasi
-        $areaKapasitas->load(['area', 'tipe']);
-        
-        $this->logCreate($areaKapasitas, 'area kapasitas', [
-            'area' => $areaKapasitas->area->lokasi ?? null,
-            'tipe' => $areaKapasitas->tipe->tipe_kendaraan ?? null,
-            'kapasitas' => $areaKapasitas->kapasitas,
-        ]);
-
-        return redirect()
-            ->route('area-kapasitas.index')
-            ->with('success', 'Data kapasitas berhasil ditambahkan');
+        try {
+            $area = AreaParkir::findOrFail($request->id_area);
+            $inserted = 0;
+            
+            foreach ($request->kapasitas as $idTipe => $kapasitas) {
+                // Skip if capacity is 0
+                if ($kapasitas == 0) {
+                    continue;
+                }
+                
+                // Check if already exists
+                $existing = AreaKapasitas::where('id_area', $request->id_area)
+                    ->where('id_tipe', $idTipe)
+                    ->first();
+                
+                if ($existing) {
+                    // Update existing
+                    $existing->update(['kapasitas' => $kapasitas]);
+                } else {
+                    // Create new
+                    AreaKapasitas::create([
+                        'id_area' => $request->id_area,
+                        'id_tipe' => $idTipe,
+                        'kapasitas' => $kapasitas,
+                    ]);
+                }
+                
+                $inserted++;
+            }
+            
+            // Log activity
+            $this->logCreate($area, 'area kapasitas', [
+                'area' => $area->lokasi,
+                'total_tipe' => $inserted,
+            ]);
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('area-kapasitas.index')
+                ->with('success', "Kapasitas berhasil disimpan untuk {$inserted} tipe kendaraan");
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan: ' . $e->getMessage());
+        }
     }
 
-    public function edit($id)
+    /**
+     * EDIT - Edit capacities for specific area
+     */
+    public function edit($idArea)
     {
-        $area_kapasitas = AreaKapasitas::findOrFail($id);
-        $areas = AreaParkir::all();
+        $area = AreaParkir::with('kapasitas')->findOrFail($idArea);
         $tipes = TipeKendaraan::all();
+        
+        // Create array of existing capacities
+        $existingKapasitas = [];
+        foreach ($area->kapasitas as $kap) {
+            $existingKapasitas[$kap->id_tipe] = $kap->kapasitas;
+        }
 
-        return view(
-            'area-kapasitas.edit',
-            compact('area_kapasitas', 'areas', 'tipes')
-        );
+        return view('area-kapasitas.edit', compact('area', 'tipes', 'existingKapasitas'));
     }
 
-    public function update(Request $request, $id)
+    /**
+     * UPDATE - Update all capacities for an area
+     */
+    public function update(Request $request, $idArea)
     {
         $request->validate([
-            'id_area' => 'required|exists:area_parkir,id_area',
-            'id_tipe' => 'required|exists:tipe_kendaraan,id_tipe',
-            'kapasitas' => 'required|integer|min:0',
+            'kapasitas' => 'required|array',
+            'kapasitas.*' => 'required|integer|min:0',
         ]);
 
-        $area_kapasita = AreaKapasitas::findOrFail($id);
-
-        $originalData = $area_kapasita->toArray();
+        DB::beginTransaction();
         
-        $area_kapasita->update([
-            'id_area' => $request->id_area,
-            'id_tipe' => $request->id_tipe,
-            'kapasitas' => $request->kapasitas,
-        ]);
-        
-        // Refresh relasi
-        $area_kapasita->load(['area', 'tipe']);
-        
-        $this->logUpdate($area_kapasita, 'area kapasitas', $originalData, [
-            'area' => $area_kapasita->area->lokasi ?? null,
-            'tipe' => $area_kapasita->tipe->tipe_kendaraan ?? null,
-        ]);
-
-        return redirect()
-            ->route('area-kapasitas.index')
-            ->with('success', 'Data kapasitas berhasil diperbarui');
+        try {
+            $area = AreaParkir::findOrFail($idArea);
+            
+            // Delete all existing capacities for this area
+            AreaKapasitas::where('id_area', $idArea)->delete();
+            
+            // Insert new capacities
+            $inserted = 0;
+            foreach ($request->kapasitas as $idTipe => $kapasitas) {
+                if ($kapasitas > 0) {
+                    AreaKapasitas::create([
+                        'id_area' => $idArea,
+                        'id_tipe' => $idTipe,
+                        'kapasitas' => $kapasitas,
+                    ]);
+                    $inserted++;
+                }
+            }
+            
+            // Log activity
+            $this->logUpdate($area, 'area kapasitas', [], [
+                'area' => $area->lokasi,
+                'total_tipe' => $inserted,
+            ]);
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('area-kapasitas.index')
+                ->with('success', 'Kapasitas berhasil diperbarui');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal update: ' . $e->getMessage());
+        }
     }
 
-    public function destroy($id)
+    /**
+     * DESTROY - Delete all capacities for an area
+     */
+    public function destroy($idArea)
     {
-        $area_kapasita = AreaKapasitas::findOrFail($id);
+        DB::beginTransaction();
         
-        // Load relasi sebelum delete
-        $area_kapasita->load(['area', 'tipe']);
-        
-        $this->logDelete($area_kapasita, 'area kapasitas', [
-            'area' => $area_kapasita->area->lokasi ?? null,
-            'tipe' => $area_kapasita->tipe->tipe_kendaraan ?? null,
-            'kapasitas' => $area_kapasita->kapasitas,
-        ]);
-        
-        $area_kapasita->delete(); // HARD DELETE
-
-        return redirect()
-            ->route('area-kapasitas.index')
-            ->with('success', 'Data kapasitas berhasil dihapus');
+        try {
+            $area = AreaParkir::findOrFail($idArea);
+            $count = $area->kapasitas()->count();
+            
+            $area->kapasitas()->delete();
+            
+            $this->logDelete($area, 'area kapasitas', [
+                'area' => $area->lokasi,
+                'deleted_count' => $count,
+            ]);
+            
+            DB::commit();
+            
+            return redirect()
+                ->route('area-kapasitas.index')
+                ->with('success', "Semua kapasitas area ({$count} tipe) berhasil dihapus");
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+        }
     }
 }

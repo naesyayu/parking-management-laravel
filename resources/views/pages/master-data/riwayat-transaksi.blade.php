@@ -53,7 +53,7 @@
                                     @foreach($areaParkir as $area)
                                         <option value="{{ $area->id_area }}" 
                                             {{ request('id_area') == $area->id_area ? 'selected' : '' }}>
-                                            {{ $area->kode_area }} - {{ $area->lokasi }}
+                                            {{ $area->nama_area }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -78,7 +78,7 @@
                         Total: <strong>{{ $transaksi->total() }}</strong> transaksi
                     </div>
 
-                    <!-- TABEL -->
+                    <!-- TABEL - WITH DETAILED COLUMNS -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead class="table-dark">
@@ -86,10 +86,13 @@
                                     <th>No</th>
                                     <th>Kode Tiket</th>
                                     <th>Plat Nomor</th>
+                                    <th>Pemilik</th>
                                     <th>Area</th>
                                     <th>Waktu Masuk</th>
                                     <th>Waktu Keluar</th>
                                     <th>Durasi</th>
+                                    <th>Tarif Asli</th> <!-- NEW -->
+                                    <th>Diskon</th> <!-- NEW -->
                                     <th>Total Bayar</th>
                                 </tr>
                             </thead>
@@ -97,23 +100,60 @@
                                 @forelse($transaksi as $index => $tr)
                                 <tr>
                                     <td>{{ $transaksi->firstItem() + $index }}</td>
-                                    <td>{{ $tr->kode_tiket }}</td>
+                                    <td><code>{{ $tr->kode_tiket }}</code></td>
                                     <td>
                                         <strong>{{ $tr->kendaraan->plat_nomor ?? '-' }}</strong>
                                         <br>
                                         <small class="text-muted">
-                                            {{ $tr->kendaraan->tipeKendaraan->tipe_kendaraan ?? '-' }}
+                                            {{ $tr->kendaraan->tipe->tipe_kendaraan ?? '-' }}
                                         </small>
                                     </td>
-                                    <td>{{ $tr->areaParkir->lokasi ?? '-' }}</td>
+                                    <td>
+                                        {{ $tr->kendaraan->pemilik->nama ?? '-' }}
+                                        @if($tr->member_info)
+                                            <br>
+                                            <span class="badge bg-success">
+                                                Member {{ $tr->member_info['level'] }}
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $tr->areaParkir->nama_area ?? '-' }}</td>
                                     <td>{{ $tr->waktu_masuk->format('d/m/Y H:i') }}</td>
                                     <td>{{ $tr->waktu_keluar ? $tr->waktu_keluar->format('d/m/Y H:i') : '-' }}</td>
                                     <td>{{ $tr->durasi_jam }} Jam</td>
-                                    <td><strong>Rp {{ number_format($tr->total_bayar, 0, ',', '.') }}</strong></td>
+                                    
+                                    <!-- TARIF ASLI -->
+                                    <td>
+                                        <span class="text-muted">
+                                            Rp {{ number_format($tr->tarif_asli, 0, ',', '.') }}
+                                        </span>
+                                    </td>
+                                    
+                                    <!-- DISKON -->
+                                    <td>
+                                        @if($tr->diskon > 0)
+                                            <span class="text-danger">
+                                                - Rp {{ number_format($tr->diskon, 0, ',', '.') }}
+                                            </span>
+                                            @if($tr->member_info)
+                                                <br>
+                                            @endif
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    
+                                    <!-- TOTAL BAYAR -->
+                                    <td>
+                                        <strong class="text-success">
+                                            Rp {{ number_format($tr->total_bayar, 0, ',', '.') }}
+                                        </strong>
+                                    </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="8" class="text-center text-muted">
+                                    <td colspan="11" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                         Tidak ada data transaksi
                                     </td>
                                 </tr>
@@ -123,7 +163,9 @@
                     </div>
 
                     <!-- PAGINATION -->
-                    {{ $transaksi->links() }}
+                    <div class="mt-3">
+                        {{ $transaksi->links() }}
+                    </div>
 
                 </div>
             </div>
@@ -135,6 +177,16 @@
     .bg-gradient-orange-purple {
         background: linear-gradient(135deg, #ffb347 0%, #ff7a18 45%, #667eea 100%);
         color: white;
+    }
+    
+    .table thead th {
+        font-size: 0.9rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    
+    .table tbody td {
+        vertical-align: middle;
     }
 </style>
 

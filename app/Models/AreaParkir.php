@@ -3,15 +3,21 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AreaParkir extends Model
 {
+    use SoftDeletes;
+    
     protected $table = 'area_parkir';
     protected $primaryKey = 'id_area';
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
+        'kode_area',
+        'nama_area',
         'lokasi',
+        'foto_lokasi',    // ← ADDED
         'keterangan',
     ];
 

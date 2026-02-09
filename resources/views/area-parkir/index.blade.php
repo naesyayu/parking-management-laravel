@@ -4,7 +4,7 @@
 <h4>Data Area Parkir</h4>
 
 <a href="{{ route('area-parkir.create') }}" class="btn btn-primary mb-3 mt-4">
-   + Tambah Area
+    + Tambah Area
 </a>
 
 <a href="{{ route('area-parkir.trash') }}" class="btn btn-secondary mb-3 mt-4">
@@ -15,16 +15,18 @@
     <thead>
         <tr>
             <th>Kode Area</th>
+            <th>Nama Area</th>
             <th>Lokasi</th>
             <th>Foto</th>
-            <th>Aksi</th>
+            <th width="150">Aksi</th>
         </tr>
     </thead>
     <tbody>
-        @foreach($areas as $area)
+        @forelse($areas as $area)
         <tr>
             <td>{{ $area->kode_area }}</td>
-            <td>{{ $area->lokasi }}</td>
+            <td>{{ $area->nama_area }}</td>
+            <td>{{ $area->lokasi ?? '-' }}</td>
             <td>
                 @if($area->foto_lokasi)
                     <img src="{{ asset('storage/'.$area->foto_lokasi) }}" width="120">
@@ -33,18 +35,29 @@
                 @endif
             </td>
             <td>
-                <a href="{{ route('area-parkir.edit', $area->id_area) }}" class="btn btn-warning btn-sm">Edit</a>
+                <a href="{{ route('area-parkir.edit', $area->id_area) }}"
+                   class="btn btn-warning btn-sm">
+                    Edit
+                </a>
 
                 <form action="{{ route('area-parkir.destroy', $area->id_area) }}"
                       method="POST" class="d-inline">
-                    @csrf @method('DELETE')
-                    <button onclick="return confirm('Hapus data?')" class="btn btn-danger btn-sm">
+                    @csrf
+                    @method('DELETE')
+                    <button onclick="return confirm('Hapus data?')"
+                            class="btn btn-danger btn-sm">
                         Hapus
                     </button>
                 </form>
             </td>
         </tr>
-        @endforeach
+        @empty
+        <tr>
+            <td colspan="5" class="text-center">
+                Data area parkir belum tersedia
+            </td>
+        </tr>
+        @endforelse
     </tbody>
 </table>
 

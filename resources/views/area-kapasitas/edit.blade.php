@@ -1,45 +1,72 @@
 @extends('app')
 
 @section('content')
-<h4>Edit Kapasitas Area</h4>
+<div class="container-fluid">
+    <h4>Edit Kapasitas Area: {{ $area->lokasi }}</h4>
 
-<form method="POST"
-      action="{{ route('area-kapasitas.update', $area_kapasitas->id_kapasitas) }}">
-@csrf @method('PUT')
+    <form method="POST" action="{{ route('area-kapasitas.update', $area->id_area) }}">
+    @csrf
+    @method('PUT')
 
-<div class="mb-3">
-    <label>Area Parkir</label>
-    <select name="id_area" class="form-control">
-        @foreach($areas as $area)
-            <option value="{{ $area->id_area }}"
-                {{ $area_kapasitas->id_area == $area->id_area ? 'selected' : '' }}>
-                {{ $area->kode_area }}
-            </option>
-        @endforeach
-    </select>
+    {{-- AREA INFO --}}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-map-marker-alt"></i> {{ $area->lokasi }}
+            </h5>
+            <small>Kode: {{ $area->kode_area }}</small>
+        </div>
+    </div>
+
+    {{-- INPUT KAPASITAS PER TIPE --}}
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Kapasitas per Tipe Kendaraan</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach($tipes as $tipe)
+                <div class="col-md-4 mb-3">
+                    <div class="border rounded p-3 bg-light">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-{{ $tipe->tipe_kendaraan == 'Motor' ? 'motorcycle' : ($tipe->tipe_kendaraan == 'Mobil' ? 'car' : 'bus') }}"></i>
+                            {{ $tipe->tipe_kendaraan }}
+                        </label>
+                        <div class="input-group">
+                            <input 
+                                type="number" 
+                                name="kapasitas[{{ $tipe->id_tipe }}]" 
+                                class="form-control form-control-lg" 
+                                value="{{ old('kapasitas.'.$tipe->id_tipe, $existingKapasitas[$tipe->id_tipe] ?? 0) }}"
+                                min="0"
+                                placeholder="0"
+                            >
+                            <span class="input-group-text">slot</span>
+                        </div>
+                        
+                        @if(isset($existingKapasitas[$tipe->id_tipe]))
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Kapasitas saat ini: {{ $existingKapasitas[$tipe->id_tipe] }}
+                            </small>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- BUTTONS --}}
+    <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save"></i> Update Kapasitas
+        </button>
+        <a href="{{ route('area-kapasitas.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Kembali
+        </a>
+    </div>
+
+    </form>
 </div>
-
-<div class="mb-3">
-    <label>Tipe Kendaraan</label>
-    <select name="id_tipe" class="form-control">
-        @foreach($tipes as $tipe)
-            <option value="{{ $tipe->id_tipe }}"
-                {{ $area_kapasitas->id_tipe == $tipe->id_tipe ? 'selected' : '' }}>
-                {{ $tipe->tipe_kendaraan }}
-            </option>
-        @endforeach
-    </select>
-</div>
-
-<div class="mb-3">
-    <label>Kapasitas</label>
-    <input type="number"
-           name="kapasitas"
-           value="{{ $area_kapasitas->kapasitas }}"
-           class="form-control">
-</div>
-
-<button class="btn btn-primary">Update</button>
-<a href="{{ route('area-kapasitas.index') }}" class="btn btn-secondary">Kembali</a>
-</form>
 @endsection

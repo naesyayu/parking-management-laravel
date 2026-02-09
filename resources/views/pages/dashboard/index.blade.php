@@ -272,7 +272,7 @@
                                     <td><code>{{ $trx->kode_tiket }}</code></td>
                                     <td><strong>{{ $trx->kendaraan->plat_nomor }}</strong></td>
                                     <td>{{ $trx->kendaraan->tipe->tipe_kendaraan ?? '-' }}</td>
-                                    <td>{{ $trx->areaParkir->lokasi ?? '-' }}</td>
+                                    <td>{{ $trx->areaParkir->nama_area ?? '-' }}</td>
                                     <td>{{ $trx->waktu_masuk->format('d/m/Y H:i') }}</td>
                                     <td>{{ $trx->waktu_masuk->diffForHumans() }}</td>
                                 </tr>

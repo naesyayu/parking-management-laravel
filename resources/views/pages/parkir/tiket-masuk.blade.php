@@ -95,7 +95,7 @@
                                     <i class="fas fa-map-marker-alt"></i> Area Parkir
                                 </td>
                                 <td class="text-end fw-bold">
-                                    {{ $transaksi->areaParkir->lokasi }}
+                                    {{ $transaksi->areaParkir->nama_area }}
                                 </td>
                             </tr>
                             @if(isset($transaksi->user) && $transaksi->user)

@@ -29,13 +29,15 @@ class MasterDataController extends Controller
         return view('pages.master-data.data-parkir', compact('tipeKendaraan', 'areaParkir', 'detailParkir'));
     }
 
-    // RIWAYAT TRANSAKSI
+    // RIWAYAT TRANSAKSI - WITH DETAILED COLUMNS (Tarif Asli + Diskon)
     public function riwayatTransaksi(Request $request)
     {
         // Query dasar
         $query = TransaksiParkir::with([
             'kendaraan.tipe',
-            'areaParkir'
+            'kendaraan.pemilik.members.level', // ← Load member data
+            'areaParkir',
+            'metodePembayaran'
         ])->where('status', 'out');
 
         // Filter tanggal
@@ -61,6 +63,26 @@ class MasterDataController extends Controller
         // Ambil data dengan pagination
         $transaksi = $query->orderBy('waktu_keluar', 'desc')->paginate(20);
 
+        // CALCULATE: Tarif Asli & Diskon untuk setiap transaksi
+        $transaksi->getCollection()->transform(function($tr) {
+            // Tarif Asli = Total Bayar + Diskon
+            $tr->tarif_asli = $tr->total_bayar + ($tr->diskon ?? 0);
+            
+            // Get member info jika ada
+            $tr->member_info = null;
+            if ($tr->kendaraan && $tr->kendaraan->pemilik) {
+                $member = $tr->kendaraan->pemilik->members->first();
+                if ($member) {
+                    $tr->member_info = [
+                        'level' => $member->level->level ?? '-',
+                        'diskon_persen' => $member->level->diskon ?? 0
+                    ];
+                }
+            }
+            
+            return $tr;
+        });
+
         // Data untuk dropdown
         $areaParkir = AreaParkir::all();
 
@@ -85,13 +107,13 @@ class MasterDataController extends Controller
         $queryKendaraanTanpaPemilik = Kendaraan::with('tipe')
             ->whereNull('id_pemilik');
 
-        // Filter Nama Pemilik (tidak berlaku untuk kendaraan tanpa pemilik)
+        // Filter Nama Pemilik
         if ($request->filled('nama')) {
             $queryMember->where('nama', 'like', '%' . $request->nama . '%');
             $queryNonMember->where('nama', 'like', '%' . $request->nama . '%');
         }
 
-        // Filter No HP (tidak berlaku untuk kendaraan tanpa pemilik)
+        // Filter No HP
         if ($request->filled('no_hp')) {
             $queryMember->where('no_hp', 'like', '%' . $request->no_hp . '%');
             $queryNonMember->where('no_hp', 'like', '%' . $request->no_hp . '%');
@@ -108,7 +130,7 @@ class MasterDataController extends Controller
             $queryKendaraanTanpaPemilik->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%');
         }
 
-        // Filter Level Member (hanya untuk yang punya member)
+        // Filter Level Member
         if ($request->filled('id_level')) {
             $queryMember->whereHas('members', function($q) use ($request) {
                 $q->where('id_level', $request->id_level);
@@ -122,7 +144,7 @@ class MasterDataController extends Controller
             });
         }
 
-        // Ambil data dengan pagination - PENTING: Gunakan pageName berbeda untuk tiap tab
+        // Pagination
         $pemilikMember = $queryMember->paginate(10, ['*'], 'member_page');
         $pemilikNonMember = $queryNonMember->paginate(10, ['*'], 'non_member_page');
         $kendaraanTanpaPemilik = $queryKendaraanTanpaPemilik->paginate(10, ['*'], 'kendaraan_page');
@@ -130,8 +152,8 @@ class MasterDataController extends Controller
         // Data untuk filter dropdown
         $memberLevels = MemberLevel::all();
 
-        // FIX: Deteksi active tab berdasarkan pagination query
-        $activeTab = 'member'; // default
+        // Deteksi active tab
+        $activeTab = 'member';
         if ($request->has('non_member_page')) {
             $activeTab = 'non-member';
         } elseif ($request->has('kendaraan_page')) {
@@ -143,7 +165,7 @@ class MasterDataController extends Controller
             'pemilikNonMember',
             'kendaraanTanpaPemilik',
             'memberLevels',
-            'activeTab' // PASS active tab ke view
+            'activeTab'
         ));
     }
 }

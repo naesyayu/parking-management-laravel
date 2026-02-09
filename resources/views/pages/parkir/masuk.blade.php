@@ -102,6 +102,26 @@
                             @enderror
                         </div>
 
+                        {{-- SELECT AREA (DYNAMIC BASED ON TIPE) --}}
+                        <div id="areaSelectContainer" style="display: none;" class="mb-4">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-map-marker-alt text-warning"></i> Pilih Area Parkir
+                                <span class="text-danger">*</span>
+                            </label>
+                            
+                            <select id="areaSelect" name="id_area_manual" class="form-select form-select-lg">
+                                <option value="">-- Pilih Area --</option>
+                            </select>
+                            
+                            @error('id_area_manual')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                            
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> Pilih area yang tersedia untuk tipe kendaraan ini
+                            </small>
+                        </div>
+
                         {{-- INFO SLOT --}}
                         <div id="infoSlot" style="display: none;">
                             <div class="alert alert-info">
@@ -137,7 +157,7 @@
                                     </h6>
                                     @foreach($areas as $area)
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span>{{ $area->area->lokasi }}</span>
+                                            <span>{{ $area->area->nama_area }}</span>
                                             <span class="badge bg-{{ $area->kapasitas > 10 ? 'success' : 'warning' }}">
                                                 {{ $area->kapasitas }} slot
                                             </span>
@@ -194,6 +214,8 @@
     var platDropdown = document.getElementById('platDropdown');
     var tipeSelect = document.getElementById('tipeSelect');
     var tipeHidden = document.getElementById('tipeHidden');
+    var areaSelectContainer = document.getElementById('areaSelectContainer');
+    var areaSelect = document.getElementById('areaSelect');
     var statusDiv = document.getElementById('statusKendaraan');
     var formParkir = document.getElementById('formParkir');
     var btnSubmit = document.getElementById('btnSubmit');
@@ -215,17 +237,60 @@
     tipeSelect.addEventListener('change', function() {
         tipeHidden.value = this.value;
         console.log('Tipe changed:', this.value);
+        
+        // Show area select if tipe selected
+        if (this.value) {
+            showAreaSelect(this.value);
+        } else {
+            areaSelectContainer.style.display = 'none';
+        }
     });
     
     // ==================
-    // AUTOCOMPLETE
+    // SHOW AREA SELECT BASED ON TIPE
+    // ==================
+    function showAreaSelect(idTipe) {
+        console.log('Showing areas for tipe:', idTipe);
+        
+        // Clear previous options
+        areaSelect.innerHTML = '<option value="">-- Pilih Area --</option>';
+        
+        // Check if this tipe has available areas
+        if (!kapasitasData[idTipe] || kapasitasData[idTipe].length === 0) {
+            areaSelectContainer.style.display = 'none';
+            alert('Tidak ada slot tersedia untuk tipe kendaraan ini!');
+            tipeSelect.value = '';
+            tipeHidden.value = '';
+            return;
+        }
+        
+        // Populate area options
+        kapasitasData[idTipe].forEach(function(area) {
+            if (area.kapasitas > 0) {
+                var option = document.createElement('option');
+                option.value = area.id_area;
+                option.textContent = area.area.nama_area + ' (' + area.kapasitas + ' slot)';
+                areaSelect.appendChild(option);
+            }
+        });
+        
+        // Show area select
+        areaSelectContainer.style.display = 'block';
+        
+        // If only one area available, select it automatically
+        if (areaSelect.options.length === 2) {
+            areaSelect.selectedIndex = 1;
+        }
+    }
+    
+    // ==================
+    // AUTOCOMPLETE (same as before)
     // ==================
     platInput.addEventListener('keyup', function() {
         var keyword = this.value.trim();
         
         clearTimeout(typingTimer);
         
-        // Reset state
         isKendaraanTerdaftar = false;
         
         if (keyword.length < 1) {
@@ -234,6 +299,7 @@
             tipeSelect.disabled = false;
             tipeSelect.value = '';
             tipeHidden.value = '';
+            areaSelectContainer.style.display = 'none';
             return;
         }
         
@@ -299,19 +365,17 @@
         
         platInput.value = item.plat_nomor;
         
-        // Set select dan hidden
         tipeSelect.value = item.id_tipe;
         tipeHidden.value = item.id_tipe;
         
-        // Disable select (tapi hidden tetap aktif)
         tipeSelect.disabled = true;
         
         platDropdown.style.display = 'none';
         
         statusDiv.innerHTML = '<div class="alert alert-success mt-2"><i class="fas fa-check-circle"></i> <strong>Kendaraan Terdaftar</strong><br>' + item.plat_nomor + ' - ' + item.tipe_kendaraan + '</div>';
         
-        // Trigger change untuk tampilkan slot
-        tipeSelect.dispatchEvent(new Event('change'));
+        // Show area select
+        showAreaSelect(item.id_tipe);
     }
     
     // Close dropdown
@@ -322,48 +386,20 @@
     });
     
     // ==================
-    // TAMPILKAN SLOT
-    // ==================
-    tipeSelect.addEventListener('change', function() {
-        var idTipe = this.value;
-        var infoSlot = document.getElementById('infoSlot');
-        var slotDetail = document.getElementById('slotDetail');
-        
-        if (!idTipe || !kapasitasData[idTipe]) {
-            infoSlot.style.display = 'none';
-            return;
-        }
-        
-        var areas = kapasitasData[idTipe];
-        var total = 0;
-        var html = '<ul>';
-        
-        areas.forEach(function(area) {
-            total += area.kapasitas;
-            html += '<li><strong>' + area.area.lokasi + '</strong>: ' + area.kapasitas + ' slot</li>';
-        });
-        
-        html += '</ul><strong>Total: ' + total + ' slot</strong>';
-        
-        slotDetail.innerHTML = html;
-        infoSlot.style.display = 'block';
-    });
-    
-    // ==================
     // FORM SUBMIT
     // ==================
     formParkir.addEventListener('submit', function(e) {
         console.log('Form submitting...');
         console.log('Plat:', platInput.value);
-        console.log('Tipe Select:', tipeSelect.value);
-        console.log('Tipe Hidden:', tipeHidden.value);
+        console.log('Tipe:', tipeHidden.value);
+        console.log('Area:', areaSelect.value);
         
-        // Pastikan hidden input terisi
+        // Ensure tipeHidden has value
         if (!tipeHidden.value) {
             tipeHidden.value = tipeSelect.value;
         }
         
-        // Validasi
+        // Validation
         if (!platInput.value.trim()) {
             e.preventDefault();
             alert('Plat nomor harus diisi!');
@@ -375,6 +411,14 @@
             e.preventDefault();
             alert('Tipe kendaraan harus dipilih!');
             tipeSelect.focus();
+            return false;
+        }
+        
+        // Check if area selection is shown and required
+        if (areaSelectContainer.style.display !== 'none' && !areaSelect.value) {
+            e.preventDefault();
+            alert('Area parkir harus dipilih!');
+            areaSelect.focus();
             return false;
         }
         

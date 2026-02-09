@@ -5,27 +5,49 @@ namespace App\Http\Controllers;
 use App\Models\AreaParkir;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use App\Traits\ActivityLogger;
 
 class AreaParkirController extends Controller
 {
     use ActivityLogger;
-    
+
+    /**
+     * ========================================
+     * INDEX (DATA AKTIF)
+     * ========================================
+     */
     public function index()
     {
-        $areas = AreaParkir::all();
+        $areas = AreaParkir::orderBy('id_area', 'desc')->get();
         return view('area-parkir.index', compact('areas'));
     }
 
+    /**
+     * ========================================
+     * CREATE
+     * ========================================
+     */
     public function create()
     {
         return view('area-parkir.create');
     }
 
+    /**
+     * ========================================
+     * STORE
+     * ========================================
+     */
     public function store(Request $request)
     {
         $request->validate([
-            'kode_area' => 'required|unique:area_parkir,kode_area',
+            'kode_area' => [
+                'required',
+                'string',
+                'max:10',
+                Rule::unique('area_parkir', 'kode_area')->whereNull('deleted_at'),
+            ],
+            'nama_area' => 'required|string|max:100',
             'lokasi' => 'nullable|string',
             'foto_lokasi' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
@@ -37,34 +59,54 @@ class AreaParkirController extends Controller
         }
 
         $areaParkir = AreaParkir::create([
-            'kode_area' => $request->kode_area,
-            'lokasi' => $request->lokasi,
+            'kode_area'   => $request->kode_area,
+            'nama_area'   => $request->nama_area,
+            'lokasi'      => $request->lokasi,
             'foto_lokasi' => $fotoPath,
         ]);
-        
+
         $this->logCreate($areaParkir, 'area parkir', [
             'has_foto' => $fotoPath ? 'Ya' : 'Tidak',
         ]);
 
-        return redirect()->route('area-parkir.index')
+        return redirect()
+            ->route('area-parkir.index')
             ->with('success', 'Area parkir berhasil ditambahkan');
     }
 
+    /**
+     * ========================================
+     * EDIT
+     * ========================================
+     */
     public function edit(AreaParkir $area_parkir)
     {
         return view('area-parkir.edit', compact('area_parkir'));
     }
 
+    /**
+     * ========================================
+     * UPDATE
+     * ========================================
+     */
     public function update(Request $request, AreaParkir $area_parkir)
     {
         $request->validate([
-            'kode_area' => 'required|unique:area_parkir,kode_area,' . $area_parkir->id_area . ',id_area',
+            'kode_area' => [
+                'required',
+                'string',
+                'max:10',
+                Rule::unique('area_parkir', 'kode_area')
+                    ->ignore($area_parkir->id_area, 'id_area')
+                    ->whereNull('deleted_at'),
+            ],
+            'nama_area' => 'required|string|max:100',
             'lokasi' => 'nullable|string',
             'foto_lokasi' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         $originalData = $area_parkir->toArray();
-        
+
         if ($request->hasFile('foto_lokasi')) {
             if ($area_parkir->foto_lokasi) {
                 Storage::disk('public')->delete($area_parkir->foto_lokasi);
@@ -76,51 +118,85 @@ class AreaParkirController extends Controller
 
         $area_parkir->update([
             'kode_area' => $request->kode_area,
-            'lokasi' => $request->lokasi,
+            'nama_area' => $request->nama_area,
+            'lokasi'    => $request->lokasi,
         ]);
-        
+
         $this->logUpdate($area_parkir, 'area parkir', $originalData, [
             'foto_updated' => $request->hasFile('foto_lokasi') ? 'Ya' : 'Tidak',
         ]);
 
-        return redirect()->route('area-parkir.index')
+        return redirect()
+            ->route('area-parkir.index')
             ->with('success', 'Area parkir berhasil diperbarui');
     }
 
-    public function trash()
-    {
-        $areas = AreaParkir::onlyTrashed()
-        ->orderBy('id_area', 'desc')
-        ->get();
-
-        return view('area-parkir.trash', compact('areas'));
-    }
-
-    public function restore($id)
-    {
-        $area = AreaParkir::onlyTrashed()->findOrFail($id);
-        $area->restore();
-        
-        $this->logRestore($area, 'area parkir');
-
-        return redirect()
-        ->route('area-parkir.trash')
-        ->with('success', 'Area parkir berhasil dikembalikan');
-    }
-
+    /**
+     * ========================================
+     * SOFT DELETE
+     * ========================================
+     */
     public function destroy(AreaParkir $area_parkir)
     {
         $this->logDelete($area_parkir, 'area parkir', [
             'has_foto' => $area_parkir->foto_lokasi ? 'Ya' : 'Tidak',
         ]);
-        
-        if ($area_parkir->foto_lokasi) {
-            Storage::disk('public')->delete($area_parkir->foto_lokasi);
-        }
 
         $area_parkir->delete();
 
-        return redirect()->route('area-parkir.index')
+        return redirect()
+            ->route('area-parkir.index')
             ->with('success', 'Area parkir berhasil dihapus');
+    }
+
+    /**
+     * ========================================
+     * TRASH
+     * ========================================
+     */
+    public function trash()
+    {
+        $areas = AreaParkir::onlyTrashed()
+            ->orderBy('id_area', 'desc')
+            ->get();
+
+        return view('area-parkir.trash', compact('areas'));
+    }
+
+    /**
+     * ========================================
+     * RESTORE
+     * ========================================
+     */
+    public function restore($id)
+    {
+        $area = AreaParkir::onlyTrashed()->findOrFail($id);
+        $area->restore();
+
+        $this->logRestore($area, 'area parkir');
+
+        return redirect()
+            ->route('area-parkir.trash')
+            ->with('success', 'Area parkir berhasil dikembalikan');
+    }
+
+    /**
+     * ========================================
+     * FORCE DELETE (PERMANEN)
+     * ========================================
+     */
+    public function forceDelete($id)
+    {
+        $area = AreaParkir::onlyTrashed()->findOrFail($id);
+
+        if ($area->foto_lokasi) {
+            Storage::disk('public')->delete($area->foto_lokasi);
+        }
+
+        $area->forceDelete();
+
+        return redirect()
+            ->route('area-parkir.trash')
+            ->with('success', 'Area parkir dihapus permanen');
     }
 }

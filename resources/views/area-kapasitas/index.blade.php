@@ -19,69 +19,77 @@
     @endif
 
     <a href="{{ route('area-kapasitas.create') }}" class="btn btn-primary mb-3 mt-4">
-        <i class="fas fa-plus"></i> Tambah Kapasitas
+        <i class="fas fa-plus"></i> Tambah Kapasitas Area
     </a>
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="5%">No</th>
-                            <th>Area Parkir</th>
-                            <th>Tipe Kendaraan</th>
-                            <th width="15%" class="text-center">Kapasitas</th>
-                            <th width="15%">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($data as $item)
-                        <tr>
-                            <td>{{ $loop->iteration }}</td>
-                            <td>
-                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                                <strong>{{ $item->area->lokasi ?? '-' }}</strong>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">
-                                    {{ $item->tipe->tipe_kendaraan ?? '-' }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-{{ $item->kapasitas > 10 ? 'success' : 'warning' }} fs-6">
-                                    {{ $item->kapasitas }} slot
-                                </span>
-                            </td>
-                            <td>
-                                <a href="{{ route('area-kapasitas.edit', $item->id_kapasitas) }}"
-                                   class="btn btn-warning btn-sm">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-
-                                <form action="{{ route('area-kapasitas.destroy', $item->id_kapasitas) }}"
-                                      method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Hapus data kapasitas ini?')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">
-                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
-                                Belum ada data kapasitas area
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+    {{-- GROUPED BY AREA --}}
+    @forelse($areas as $area)
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marker-alt"></i> {{ $area->lokasi }}
+                </h5>
+                <small class="opacity-75">Kode: {{ $area->kode_area }}</small>
+            </div>
+            <div>
+                <a href="{{ route('area-kapasitas.edit', $area->id_area) }}" 
+                   class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+                <form action="{{ route('area-kapasitas.destroy', $area->id_area) }}" 
+                      method="POST" class="d-inline">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn btn-danger btn-sm"
+                        onclick="return confirm('Hapus semua kapasitas area ini?')">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </form>
             </div>
         </div>
+        <div class="card-body">
+            @if($area->kapasitas->isEmpty())
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Belum ada kapasitas untuk area ini
+                </div>
+            @else
+                <div class="row">
+                    @foreach($area->kapasitas as $kap)
+                    <div class="col-md-4 mb-2">
+                        <div class="d-flex justify-content-between align-items-center border rounded p-3 bg-light">
+                            <div>
+                                <span class="badge bg-info">{{ $kap->tipe->tipe_kendaraan }}</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-{{ $kap->kapasitas > 10 ? 'success' : 'warning' }} fs-6">
+                                    {{ $kap->kapasitas }} slot
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                
+                {{-- Summary --}}
+                <div class="mt-3 pt-3 border-top">
+                    <strong>Total: {{ $area->kapasitas->count() }} tipe kendaraan | 
+                    Total Slot: {{ $area->kapasitas->sum('kapasitas') }}</strong>
+                </div>
+            @endif
+        </div>
     </div>
+    @empty
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Belum ada area parkir
+    </div>
+    @endforelse
 </div>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
 @endsection

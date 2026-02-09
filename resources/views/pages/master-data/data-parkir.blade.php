@@ -102,7 +102,7 @@
                                                 <td><span class="badge bg-info">{{ $area->kode_area }}</span></td>
                                                 <td>
                                                     <i class="fas fa-map-marker-alt me-1 text-danger"></i>
-                                                    {{ $area->lokasi }}
+                                                    {{ $area->nama_area }}
                                                 </td>
                                                 <td>{{ $kap->tipe->tipe_kendaraan }}</td>
                                                 <td>

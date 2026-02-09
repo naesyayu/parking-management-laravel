@@ -103,7 +103,7 @@ class DashboardController extends Controller
                 }
                 
                 return [
-                    'area' => $item->area->lokasi ?? 'N/A',
+                    'area' => $item->area->nama_area ?? 'N/A',
                     'tipe' => $item->tipe->tipe_kendaraan ?? 'N/A',
                     'tersedia' => $item->kapasitas,
                     'terpakai' => $terpakai,
