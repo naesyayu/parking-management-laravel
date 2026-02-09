@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TipeKendaraan extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'tipe_kendaraan';
     protected $primaryKey = 'id_tipe';
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'kode_tipe',

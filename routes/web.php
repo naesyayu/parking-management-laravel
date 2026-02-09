@@ -115,6 +115,8 @@ Route::middleware(['auth', 'nocache'])->group(function () {
         
         // TIPE KENDARAAN
         Route::resource('tipe-kendaraan', TipeKendaraanController::class);
+        Route::get('/tipe-kendaraan-trash', [TipeKendaraanController::class, 'trash'])->name('tipe-kendaraan.trash');
+        Route::post('/tipe-kendaraan/{id}/restore', [TipeKendaraanController::class, 'restore'])->name('tipe-kendaraan.restore');
         
         // PEMILIK
         Route::resource('pemilik', PemilikController::class);

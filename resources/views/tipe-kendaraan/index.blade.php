@@ -11,6 +11,10 @@
     + Tambah Tipe Kendaraan
 </a>
 
+<a href="{{ route('tipe-kendaraan.trash') }}" class="btn btn-secondary mb-3 mt-4">
+    Backup Data Tipe Kendaraan
+</a>
+
 <table class="table table-bordered mt-4">
     <thead>
         <tr>
