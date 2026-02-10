@@ -17,6 +17,55 @@
     @stack('styles')
     
 </head>
+
+{{-- SweetAlert2 JS --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{{-- Global Notification Handler --}}
+<script>
+   @if(session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: '{{ session('success') }}',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+        @endif
+
+    
+    @if(session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal!',
+            text: '{{ session('error') }}',
+            confirmButtonText: 'OK'
+        });
+    @endif
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (Swal.isVisible()) {
+            Swal.close();
+        }
+
+        // paksa hapus backdrop kalau ada bug
+        document.body.classList.remove('swal2-shown');
+        document.body.style.removeProperty('padding-right');
+
+        document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+    });
+</script>
+
+{{-- SweetAlert Helper Functions --}}
+<script src="{{ asset('js/sweetalert-helpers.js') }}"></script>
+
 <body>
 
     @include('Layout.header')

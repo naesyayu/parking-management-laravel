@@ -4,14 +4,7 @@
 <div class="container-fluid">
     <h4>👤 Data Pemilik</h4>
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">
-            {{ session('success') }}
-            <button class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    @endif
-
-    <!-- SEARCH & BUTTONS -->
+    {{-- SEARCH & BUTTONS --}}
     <div class="row mb-3 mt-4">
         <div class="col-md-6">
             <form method="GET" class="d-flex gap-2">
@@ -31,16 +24,16 @@
             </form>
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ route('pemilik.create') }}" class="btn btn-primary">
+            <button onclick="confirmCreate('Pemilik', '{{ route('pemilik.create') }}')" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Tambah Pemilik
-            </a>
+            </button>
             <a href="{{ route('pemilik.trash') }}" class="btn btn-secondary">
                 <i class="fas fa-trash"></i> Backup Data
             </a>
         </div>
     </div>
 
-    <!-- TABLE -->
+    {{-- TABLE --}}
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -62,13 +55,19 @@
                             <td>{{ $item->no_hp }}</td>
                             <td>{{ $item->alamat }}</td>
                             <td>
-                                <a href="{{ route('pemilik.edit', $item) }}" class="btn btn-warning btn-sm">
+                                <button onclick="confirmEdit('Pemilik', '{{ $item->nama }}', '{{ route('pemilik.edit', $item) }}')" 
+                                        class="btn btn-warning btn-sm">
                                     <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ route('pemilik.destroy', $item) }}" method="POST" class="d-inline">
+                                </button>
+
+                                <form action="{{ route('pemilik.destroy', $item) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      id="delete-form-{{ $item->id_pemilik }}">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Yakin hapus data?')">
+                                    <button type="button"
+                                            onclick="confirmDelete('Pemilik', '{{ $item->nama }}', 'delete-form-{{ $item->id_pemilik }}')"
+                                            class="btn btn-danger btn-sm">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>

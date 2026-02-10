@@ -5,15 +5,15 @@
     <h4>💰 Tarif Parkir</h4>
 
     <div class="text-end mb-3 mt-4">
-        <a href="{{ route('tarif-parkir.create') }}" class="btn btn-primary">
+        <button onclick="confirmCreate('Tarif Parkir', '{{ route('tarif-parkir.create') }}')" class="btn btn-primary">
             <i class="fas fa-plus"></i> Tambah Tarif
-        </a>
+        </button>
         <a href="{{ route('tarif-parkir.trash') }}" class="btn btn-secondary">
             <i class="fas fa-trash"></i> Backup Data
         </a>
     </div>
 
-    <!-- GROUPED BY TIPE KENDARAAN -->
+    {{-- GROUPED BY TIPE KENDARAAN --}}
     @foreach($tipes as $tipe)
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-primary text-white">
@@ -46,15 +46,19 @@
                                 Rp {{ number_format($tarif->tarif, 0, ',', '.') }}
                             </td>
                             <td>
-                                <a href="{{ route('tarif-parkir.edit', $tarif->id_tarif) }}"
-                                   class="btn btn-warning btn-sm">
+                                <button onclick="confirmEdit('Tarif Parkir', '{{ $tipe->tipe_kendaraan }} ({{ $tarif->detailParkir->jam_min }}-{{ $tarif->detailParkir->jam_max }} jam)', '{{ route('tarif-parkir.edit', $tarif->id_tarif) }}')" 
+                                        class="btn btn-warning btn-sm">
                                     <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ route('tarif-parkir.destroy', $tarif->id_tarif) }}"
-                                      method="POST" class="d-inline">
+                                </button>
+
+                                <form action="{{ route('tarif-parkir.destroy', $tarif->id_tarif) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      id="delete-form-{{ $tarif->id_tarif }}">
                                     @csrf @method('DELETE')
-                                    <button class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Hapus tarif ini?')">
+                                    <button type="button"
+                                            onclick="confirmDelete('Tarif Parkir', 'Rp {{ number_format($tarif->tarif, 0, ',', '.') }}', 'delete-form-{{ $tarif->id_tarif }}')"
+                                            class="btn btn-danger btn-sm">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>

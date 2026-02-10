@@ -246,53 +246,198 @@
 
     <hr class="my-4">
 
-    {{-- OCCUPANCY RATE PER AREA --}}
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h5 class="mb-3"><i class="fas fa-parking"></i> Status Slot Parkir Per Area</h5>
-        </div>
-        @forelse($occupancy as $item)
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h6 class="card-title">{{ $item['area'] }}</h6>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <small class="text-muted">Occupancy Rate:</small>
-                            <small class="fw-bold">{{ $item['rate'] }}%</small>
+    {{-- OCCUPANCY RATE PER AREA & TIPE --}}
+<div class="row mb-4">
+    <div class="col-md-12 mb-3">
+        <h5><i class="fas fa-parking"></i> Status Slot Parkir Per Area</h5>
+        <p class="text-muted small mb-0">Real-time occupancy breakdown per area dan per tipe kendaraan</p>
+    </div>
+
+    @forelse($occupancy as $area)
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100 border-0">
+            {{-- AREA HEADER --}}
+            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="d-flex justify-content-between align-items-center text-white">
+                    <div>
+                        <h6 class="mb-0 fw-bold">
+                            <i class="fas fa-map-marker-alt me-2"></i>{{ $area['area_name'] }}
+                        </h6>
+                        <small class="opacity-75">{{ $area['area_lokasi'] }}</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="mb-0 fw-bold">{{ $area['overall_rate'] }}%</h4>
+                        <small class="opacity-75">Occupancy</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                {{-- OVERALL PROGRESS BAR --}}
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold text-muted">Overall Occupancy</span>
+                        <span class="fw-bold">
+                            {{ $area['total_terpakai'] }} / {{ $area['total_slot'] }} slot
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 30px;">
+                        <div class="progress-bar 
+                            @if($area['overall_rate'] >= 90) bg-danger
+                            @elseif($area['overall_rate'] >= 70) bg-warning
+                            @elseif($area['overall_rate'] >= 50) bg-info
+                            @else bg-success
+                            @endif
+                        " 
+                             role="progressbar" 
+                             style="width: {{ $area['overall_rate'] }}%;"
+                             aria-valuenow="{{ $area['overall_rate'] }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            <strong>{{ $area['overall_rate'] }}%</strong>
                         </div>
-                        <div class="progress" style="height: 25px;">
-                            <div class="progress-bar {{ $item['rate'] > 80 ? 'bg-danger' : ($item['rate'] > 50 ? 'bg-warning' : 'bg-success') }}" 
-                                 role="progressbar" 
-                                 style="width: {{ $item['rate'] }}%">
+                    </div>
+                </div>
+
+                {{-- BREAKDOWN PER TIPE KENDARAAN --}}
+                <div class="breakdown-section">
+                    <h6 class="mb-3 text-muted">
+                        <i class="fas fa-car me-2"></i>Breakdown Per Tipe Kendaraan
+                    </h6>
+                    
+                    @foreach($area['breakdown'] as $detail)
+                    <div class="mb-3 pb-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <span class="badge bg-secondary me-2">{{ $detail['kode_tipe'] }}</span>
+                                <strong>{{ $detail['tipe'] }}</strong>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge 
+                                    @if($detail['rate'] >= 90) bg-danger
+                                    @elseif($detail['rate'] >= 70) bg-warning
+                                    @elseif($detail['rate'] >= 50) bg-info
+                                    @else bg-success
+                                    @endif
+                                ">
+                                    {{ $detail['rate'] }}%
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Progress bar per tipe --}}
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div class="progress-bar 
+                                @if($detail['rate'] >= 90) bg-danger
+                                @elseif($detail['rate'] >= 70) bg-warning
+                                @elseif($detail['rate'] >= 50) bg-info
+                                @else bg-success
+                                @endif
+                            " 
+                                 style="width: {{ $detail['rate'] }}%">
+                            </div>
+                        </div>
+
+                        {{-- Detail slot --}}
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background: #f8f9fa;">
+                                    <small class="text-muted d-block">Total</small>
+                                    <strong class="text-primary">{{ $detail['total'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background: #d4edda;">
+                                    <small class="text-muted d-block">Tersedia</small>
+                                    <strong class="text-success">{{ $detail['tersedia'] }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center p-2 rounded" style="background: #f8d7da;">
+                                    <small class="text-muted d-block">Terpakai</small>
+                                    <strong class="text-danger">{{ $detail['terpakai'] }}</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <table class="table table-sm mb-0">
-                        <tr>
-                            <td class="text-muted">Kapasitas Total:</td>
-                            <td class="fw-bold">{{ $item['total'] }} slot</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Tersedia:</td>
-                            <td class="text-success fw-bold">{{ $item['tersedia'] }} slot</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Terpakai:</td>
-                            <td class="text-danger fw-bold">{{ $item['terpakai'] }} slot</td>
-                        </tr>
-                    </table>
+                    @endforeach
+                </div>
+
+                {{-- SUMMARY TABLE --}}
+                <div class="summary-box mt-3 p-3 rounded" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fw-bold text-primary fs-4">{{ $area['total_slot'] }}</div>
+                            <small class="text-muted">Total Slot</small>
+                        </div>
+                        <div class="col-4 border-start border-end">
+                            <div class="fw-bold text-success fs-4">{{ $area['total_tersedia'] }}</div>
+                            <small class="text-muted">Tersedia</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="fw-bold text-danger fs-4">{{ $area['total_terpakai'] }}</div>
+                            <small class="text-muted">Terpakai</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        @empty
-        <div class="col-md-12">
-            <div class="alert alert-warning">Belum ada data slot kapasitas</div>
-        </div>
-        @endforelse
     </div>
-
+    @empty
+    <div class="col-md-12">
+        <div class="alert alert-warning shadow-sm">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Belum ada data kapasitas area parkir
+        </div>
+    </div>
+    @endforelse
 </div>
+
+{{-- CUSTOM CSS FOR OCCUPANCY CARDS --}}
+<style>
+.breakdown-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.breakdown-section .border-bottom:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+}
+
+.summary-box {
+    border: 2px solid #c3cfe2;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.card {
+    border-radius: 15px !important;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+.progress {
+    border-radius: 10px;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    border-radius: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+
 
 {{-- CHART.JS CDN --}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>

@@ -1,48 +1,69 @@
 @extends('app')
 
 @section('content')
-    <h4 class="mb-3">Detail Parkir</h4>
+<div class="container-fluid">
+    <h4>⏱️ Data Detail Parkir</h4>
 
-    <a href="{{ route('detail-parkir.create') }}" class="btn btn-primary mb-3">
-        + Tambah Detail Parkir
-    </a>
+    <div class="text-end mb-3 mt-4">
+        <button onclick="confirmCreate('Detail Parkir', '{{ route('detail-parkir.create') }}')" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Tambah Detail Parkir
+        </button>
+        <a href="{{ route('detail-parkir.trash') }}" class="btn btn-secondary">
+            <i class="fas fa-trash"></i> Backup Data
+        </a>
+    </div>
 
-    <a href="{{ route('detail-parkir.trash') }}" class="btn btn-secondary mb-3">
-        Backup Data Durasi Parkir
-    </a>
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="50">No</th>
+                            <th>Jam Minimum</th>
+                            <th>Jam Maximum</th>
+                            <th>Rentang</th>
+                            <th width="150">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($details as $item)
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td><strong>{{ $item->jam_min }}</strong></td>
+                            <td><strong>{{ $item->jam_max }}</strong></td>
+                            <td><span class="badge bg-info">{{ $item->jam_min }} - {{ $item->jam_max }} jam</span></td>
+                            <td>
+                                <button onclick="confirmEdit('Detail Parkir', '{{ $item->jam_min }}-{{ $item->jam_max }} jam', '{{ route('detail-parkir.edit', $item) }}')" 
+                                        class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </button>
 
-    <table class="table table-bordered">
-        <thead class="table-light">
-            <tr>
-                <th>#</th>
-                <th>Jam Minimal</th>
-                <th>Jam Maksimal</th>
-                <th width="180">Aksi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($details as $detail)
-                <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $detail->jam_min }}</td>
-                    <td>{{ $detail->jam_max }}</td>
-                    <td>
-                        <a href="{{ route('detail-parkir.edit', $detail->id_tarif_detail) }}"
-                           class="btn btn-sm btn-warning">Edit</a>
-
-                        <form action="{{ route('detail-parkir.destroy', $detail->id_tarif_detail) }}"
-                              method="POST"
-                              class="d-inline"
-                              onsubmit="return confirm('Hapus data ini?')">
-                            @csrf
-                            @method('DELETE')
-                            <button class="btn btn-sm btn-danger">
-                                Hapus
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+                                <form action="{{ route('detail-parkir.destroy', $item) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      id="delete-form-{{ $item->id_tarif_detail }}">
+                                    @csrf @method('DELETE')
+                                    <button type="button"
+                                            onclick="confirmDelete('Detail Parkir', '{{ $item->jam_min }}-{{ $item->jam_max }} jam', 'delete-form-{{ $item->id_tarif_detail }}')"
+                                            class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                                Belum ada data detail parkir
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

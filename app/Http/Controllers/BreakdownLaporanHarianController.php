@@ -75,7 +75,7 @@ class BreakdownLaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
-        $occupancy = $this->getOccupancy();
+        $occupancy = $this->getOccupancyDetailed(); // ← CHANGED METHOD
         $areas = AreaParkir::all();
         $metodes = MetodePembayaran::all();
         $tipes = TipeKendaraan::all();
@@ -106,6 +106,64 @@ class BreakdownLaporanHarianController extends Controller
             'chartTipe',
             'chartMetode'
         ));
+    }
+
+    /**
+     * ========================================
+     * GET OCCUPANCY DETAILED (PER AREA & TIPE)
+     * ========================================
+     */
+    private function getOccupancyDetailed()
+    {
+        return AreaParkir::with(['kapasitas.tipe'])
+            ->get()
+            ->map(function($area) {
+                $kapasitasDetails = $area->kapasitas->map(function($kap) use ($area) {
+                    // Hitung kendaraan yang sedang parkir untuk area & tipe ini
+                    $terpakai = TransaksiParkir::where('id_area', $area->id_area)
+                        ->where('status', 'in')
+                        ->whereHas('kendaraan', function($q) use ($kap) {
+                            $q->where('id_tipe', $kap->id_tipe);
+                        })
+                        ->count();
+                    
+                    $total = $kap->kapasitas + $terpakai;
+                    $rate = $total > 0 
+                        ? round(($terpakai / $total) * 100, 1) 
+                        : 0;
+                    
+                    return [
+                        'tipe' => $kap->tipe->tipe_kendaraan ?? 'N/A',
+                        'kode_tipe' => $kap->tipe->kode_tipe ?? 'N/A',
+                        'tersedia' => $kap->kapasitas,
+                        'terpakai' => $terpakai,
+                        'total' => $total,
+                        'rate' => $rate,
+                    ];
+                });
+                
+                // Calculate overall occupancy for this area
+                $totalKapasitas = $area->kapasitas->sum('kapasitas');
+                $totalTerpakai = TransaksiParkir::where('id_area', $area->id_area)
+                    ->where('status', 'in')
+                    ->count();
+                $totalSlot = $totalKapasitas + $totalTerpakai;
+                $overallRate = $totalSlot > 0 
+                    ? round(($totalTerpakai / $totalSlot) * 100, 1) 
+                    : 0;
+                
+                return [
+                    'area_id' => $area->id_area,
+                    'area_name' => $area->nama_area,
+                    'area_lokasi' => $area->lokasi,
+                    'overall_rate' => $overallRate,
+                    'total_slot' => $totalSlot,
+                    'total_tersedia' => $totalKapasitas,
+                    'total_terpakai' => $totalTerpakai,
+                    'breakdown' => $kapasitasDetails,
+                ];
+            })
+            ->filter(fn($item) => $item['breakdown']->isNotEmpty()); // Only areas with capacity
     }
 
     /**
@@ -172,10 +230,12 @@ class BreakdownLaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
+        $occupancy = $this->getOccupancyDetailed(); // ← CHANGED METHOD
+
         $filename = 'Laporan_Breakdown_' . now()->format('Ymd_His') . '.csv';
 
         return new StreamedResponse(
-            function() use ($transaksi, $breakdownTipe, $breakdownMetode, $request) {
+            function() use ($transaksi, $breakdownTipe, $breakdownMetode, $occupancy, $request) {
                 $file = fopen('php://output', 'w');
                 
                 // UTF-8 BOM untuk Excel
@@ -188,7 +248,7 @@ class BreakdownLaporanHarianController extends Controller
                 fputcsv($file, ['Sistem Parkir Management'], ';');
                 fputcsv($file, ['Dicetak: ' . now()->format('d/m/Y H:i:s')], ';');
                 fputcsv($file, ['User: ' . Auth::user()->username], ';');
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
                 
                 // Filter Information
                 if ($request->filled('start_date') || $request->filled('end_date')) {
@@ -201,18 +261,10 @@ class BreakdownLaporanHarianController extends Controller
                     }
                     fputcsv($file, ['Periode: ' . $periode], ';');
                 }
-                if ($request->filled('id_area')) {
-                    $area = AreaParkir::find($request->id_area);
-                    fputcsv($file, ['Area: ' . ($area->nama_area ?? 'Semua Area')], ';');
-                }
-                if ($request->filled('id_tipe')) {
-                    $tipe = TipeKendaraan::find($request->id_tipe);
-                    fputcsv($file, ['Tipe: ' . ($tipe->tipe_kendaraan ?? 'Semua Tipe')], ';');
-                }
                 
-                fputcsv($file, [], ';'); // Empty row
-                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
                 
                 // ========================================
                 // SECTION 2: RINGKASAN UTAMA
@@ -226,9 +278,9 @@ class BreakdownLaporanHarianController extends Controller
                 fputcsv($file, ['Total Diskon', 'Rp ' . number_format($transaksi->sum('diskon'), 0, ',', '.')], ';');
                 fputcsv($file, ['Rata-rata Per Transaksi', 'Rp ' . number_format($transaksi->avg('total_bayar'), 0, ',', '.')], ';');
                 
-                fputcsv($file, [], ';'); // Empty row
-                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
                 
                 // ========================================
                 // SECTION 3: BREAKDOWN PER TIPE KENDARAAN
@@ -251,9 +303,9 @@ class BreakdownLaporanHarianController extends Controller
                     ], ';');
                 }
                 
-                fputcsv($file, [], ';'); // Empty row
-                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
                 
                 // ========================================
                 // SECTION 4: BREAKDOWN PER METODE PEMBAYARAN
@@ -276,18 +328,51 @@ class BreakdownLaporanHarianController extends Controller
                     ], ';');
                 }
                 
-                fputcsv($file, [], ';'); // Empty row
-                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
                 
                 // ========================================
-                // SECTION 5: DETAIL TRANSAKSI
+                // SECTION 5: OCCUPANCY PER AREA & TIPE
+                // ========================================
+                fputcsv($file, ['STATUS OCCUPANCY PER AREA & TIPE KENDARAAN'], ';');
+                fputcsv($file, [str_repeat('-', 80)], ';');
+                fputcsv($file, [], ';');
+                
+                foreach($occupancy as $area) {
+                    fputcsv($file, ['AREA: ' . $area['area_name'] . ' (' . $area['area_lokasi'] . ')'], ';');
+                    fputcsv($file, ['Occupancy Rate Keseluruhan: ' . $area['overall_rate'] . '%'], ';');
+                    fputcsv($file, ['Total Slot: ' . $area['total_slot'] . ' | Tersedia: ' . $area['total_tersedia'] . ' | Terpakai: ' . $area['total_terpakai']], ';');
+                    fputcsv($file, [], ';');
+                    
+                    fputcsv($file, ['Tipe Kendaraan', 'Total Slot', 'Tersedia', 'Terpakai', 'Occupancy Rate'], ';');
+                    fputcsv($file, [str_repeat('-', 20), str_repeat('-', 12), str_repeat('-', 12), str_repeat('-', 12), str_repeat('-', 15)], ';');
+                    
+                    foreach($area['breakdown'] as $detail) {
+                        fputcsv($file, [
+                            $detail['tipe'],
+                            $detail['total'] . ' slot',
+                            $detail['tersedia'] . ' slot',
+                            $detail['terpakai'] . ' slot',
+                            $detail['rate'] . '%'
+                        ], ';');
+                    }
+                    
+                    fputcsv($file, [], ';');
+                    fputcsv($file, [str_repeat('-', 80)], ';');
+                    fputcsv($file, [], ';');
+                }
+                
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
+                
+                // ========================================
+                // SECTION 6: DETAIL TRANSAKSI
                 // ========================================
                 fputcsv($file, ['DETAIL TRANSAKSI'], ';');
                 fputcsv($file, [str_repeat('-', 80)], ';');
                 fputcsv($file, [], ';');
                 
-                // Header dengan width yang lebih baik
                 fputcsv($file, [
                     'No',
                     'Kode Tiket',
@@ -320,7 +405,6 @@ class BreakdownLaporanHarianController extends Controller
                     str_repeat('-', 15)
                 ], ';');
                 
-                // Data rows
                 $no = 1;
                 foreach($transaksi as $t) {
                     fputcsv($file, [
@@ -340,10 +424,9 @@ class BreakdownLaporanHarianController extends Controller
                     ], ';');
                 }
                 
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
                 fputcsv($file, [str_repeat('=', 5), str_repeat('=', 100)], ';');
                 
-                // Subtotal
                 fputcsv($file, [
                     '',
                     '',
@@ -360,16 +443,17 @@ class BreakdownLaporanHarianController extends Controller
                     ($transaksi->sum('total_bayar') - $transaksi->sum('diskon'))
                 ], ';');
                 
-                fputcsv($file, [], ';'); // Empty row
-                fputcsv($file, ['=' . str_repeat('=', 100)], ';'); // Separator
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, [], ';');
+                fputcsv($file, ['=' . str_repeat('=', 100)], ';');
+                fputcsv($file, [], ';');
                 
                 // ========================================
-                // SECTION 6: FOOTER
+                // SECTION 7: FOOTER
                 // ========================================
                 fputcsv($file, ['CATATAN:'], ';');
                 fputcsv($file, ['- Laporan ini dihasilkan secara otomatis oleh sistem'], ';');
                 fputcsv($file, ['- Data yang ditampilkan adalah transaksi yang sudah selesai (status: OUT)'], ';');
+                fputcsv($file, ['- Occupancy dihitung berdasarkan kendaraan yang sedang parkir (status: IN)'], ';');
                 fputcsv($file, ['- Total Bayar sudah termasuk diskon member jika ada'], ';');
                 fputcsv($file, ['- Net = Total Bayar - Diskon'], ';');
                 fputcsv($file, [], ';');
@@ -431,6 +515,7 @@ class BreakdownLaporanHarianController extends Controller
         return $dailyData;
     }
 
+    // OLD METHOD - KEEP FOR BACKWARD COMPATIBILITY IF NEEDED
     private function getOccupancy()
     {
         return AreaKapasitas::with(['area', 'tipe'])

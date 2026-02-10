@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <h4>🚗 Data Kendaraan</h4>
 
-    <!-- SEARCH & BUTTONS -->
+    {{-- SEARCH & BUTTONS --}}
     <div class="row mb-3 mt-4">
         <div class="col-md-6">
             <form method="GET" class="d-flex gap-2">
@@ -24,16 +24,16 @@
             </form>
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ route('data-kendaraan.create') }}" class="btn btn-primary">
+            <button onclick="confirmCreate('Kendaraan', '{{ route('data-kendaraan.create') }}')" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Tambah Kendaraan
-            </a>
+            </button>
             <a href="{{ route('data-kendaraan.trash') }}" class="btn btn-secondary">
                 <i class="fas fa-trash"></i> Backup Data
             </a>
         </div>
     </div>
 
-    <!-- TABLE -->
+    {{-- TABLE --}}
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -50,31 +50,35 @@
                     </thead>
                     <tbody>
                         @forelse($kendaraans as $k)
-                            <tr>
-                                <td>{{ $loop->iteration }}</td>
-                                <td><strong>{{ $k->plat_nomor }}</strong></td>
-                                <td>{{ $k->pemilik?->nama ?? '-' }}</td>
-                                <td>{{ $k->tipe->tipe_kendaraan }}</td>
-                                <td>
-                                    <span class="badge bg-{{ $k->status=='aktif'?'success':'secondary' }}">
-                                        {{ ucfirst($k->status) }}
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="{{ route('data-kendaraan.edit', $k->id_kendaraan) }}"
-                                    class="btn btn-warning btn-sm">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form action="{{ route('data-kendaraan.destroy', $k->id_kendaraan) }}"
-                                        method="POST" class="d-inline">
-                                        @csrf @method('DELETE')
-                                        <button class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Hapus data?')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
+                        <tr>
+                            <td>{{ $loop->iteration }}</td>
+                            <td><strong>{{ $k->plat_nomor }}</strong></td>
+                            <td>{{ $k->pemilik?->nama ?? '-' }}</td>
+                            <td>{{ $k->tipe->tipe_kendaraan }}</td>
+                            <td>
+                                <span class="badge bg-{{ $k->status=='aktif'?'success':'secondary' }}">
+                                    {{ ucfirst($k->status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <button onclick="confirmEdit('Kendaraan', '{{ $k->plat_nomor }}', '{{ route('data-kendaraan.edit', $k->id_kendaraan) }}')" 
+                                        class="btn btn-warning btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+
+                                <form action="{{ route('data-kendaraan.destroy', $k->id_kendaraan) }}" 
+                                      method="POST" 
+                                      class="d-inline"
+                                      id="delete-form-{{ $k->id_kendaraan }}">
+                                    @csrf @method('DELETE')
+                                    <button type="button"
+                                            onclick="confirmDelete('Kendaraan', '{{ $k->plat_nomor }}', 'delete-form-{{ $k->id_kendaraan }}')"
+                                            class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
                         @empty
                         <tr>
                             <td colspan="6" class="text-center py-4 text-muted">
