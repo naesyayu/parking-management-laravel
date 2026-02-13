@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AreaKapasitas;
 use App\Models\AreaParkir;
 use App\Models\TipeKendaraan;
+use App\Models\TransaksiParkir;
 use Illuminate\Http\Request;
 use App\Traits\ActivityLogger;
 use Illuminate\Support\Facades\DB;
@@ -101,6 +102,9 @@ class AreaKapasitasController extends Controller
 
     /**
      * EDIT - Edit capacities for specific area
+     * ========================================
+     * CRITICAL: Check active transactions PER TIPE
+     * ========================================
      */
     public function edit($idArea)
     {
@@ -112,12 +116,30 @@ class AreaKapasitasController extends Controller
         foreach ($area->kapasitas as $kap) {
             $existingKapasitas[$kap->id_tipe] = $kap->kapasitas;
         }
+        
+        // ========================================
+        // CHECK ACTIVE TRANSACTIONS PER TIPE
+        // ========================================
+        $activeTransactions = [];
+        foreach ($tipes as $tipe) {
+            $count = TransaksiParkir::where('id_area', $idArea)
+                ->whereHas('kendaraan', function($q) use ($tipe) {
+                    $q->where('id_tipe', $tipe->id_tipe);
+                })
+                ->where('status', 'in') // Masih parkir
+                ->count();
+            
+            $activeTransactions[$tipe->id_tipe] = $count;
+        }
 
-        return view('area-kapasitas.edit', compact('area', 'tipes', 'existingKapasitas'));
+        return view('area-kapasitas.edit', compact('area', 'tipes', 'existingKapasitas', 'activeTransactions'));
     }
 
     /**
      * UPDATE - Update all capacities for an area
+     * ========================================
+     * CRITICAL: ONLY BLOCK TYPES WITH PARKED VEHICLES
+     * ========================================
      */
     public function update(Request $request, $idArea)
     {
@@ -130,6 +152,44 @@ class AreaKapasitasController extends Controller
         
         try {
             $area = AreaParkir::findOrFail($idArea);
+            
+            // ========================================
+            // CHECK ONLY SUBMITTED TYPES WITH ACTIVE VEHICLES
+            // ========================================
+            $blockedTipes = [];
+            
+            foreach ($request->kapasitas as $idTipe => $newKapasitas) {
+                // Count active transactions for THIS SPECIFIC TIPE in this area
+                $activeCount = TransaksiParkir::where('id_area', $idArea)
+                    ->whereHas('kendaraan', function($q) use ($idTipe) {
+                        $q->where('id_tipe', $idTipe);
+                    })
+                    ->where('status', 'in')
+                    ->count();
+                
+                // ========================================
+                // HANYA BLOCK JIKA:
+                // 1. Ada kendaraan parkir (activeCount > 0)
+                // 2. Dan kapasitas baru LEBIH KECIL dari jumlah kendaraan parkir
+                // ========================================
+                if ($activeCount > 0 && $newKapasitas < $activeCount) {
+                    $tipe = TipeKendaraan::find($idTipe);
+                    $blockedTipes[] = $tipe->tipe_kendaraan . " (Ada {$activeCount} kendaraan parkir, minimal kapasitas {$activeCount})";
+                }
+            }
+            
+            // If any validation fails, BLOCK the update
+            if (!empty($blockedTipes)) {
+                DB::rollBack();
+                
+                return back()
+                    ->withInput()
+                    ->with('error', 'Tidak dapat mengubah kapasitas! ' . implode(', ', $blockedTipes));
+            }
+            
+            // ========================================
+            // UPDATE LOGIC - DELETE & RE-INSERT
+            // ========================================
             
             // Delete all existing capacities for this area
             AreaKapasitas::where('id_area', $idArea)->delete();
@@ -170,6 +230,9 @@ class AreaKapasitasController extends Controller
 
     /**
      * DESTROY - Delete all capacities for an area
+     * ========================================
+     * CRITICAL: Prevent delete if ANY vehicles are parked
+     * ========================================
      */
     public function destroy($idArea)
     {
@@ -177,6 +240,20 @@ class AreaKapasitasController extends Controller
         
         try {
             $area = AreaParkir::findOrFail($idArea);
+            
+            // ========================================
+            // CHECK ACTIVE TRANSACTIONS BEFORE DELETE
+            // ========================================
+            $activeCount = TransaksiParkir::where('id_area', $idArea)
+                ->where('status', 'in')
+                ->count();
+            
+            if ($activeCount > 0) {
+                DB::rollBack();
+                
+                return back()->with('error', "Tidak dapat menghapus kapasitas! Masih ada {$activeCount} kendaraan yang sedang parkir di area ini.");
+            }
+            
             $count = $area->kapasitas()->count();
             
             $area->kapasitas()->delete();

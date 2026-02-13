@@ -3,149 +3,139 @@
 namespace App\Traits;
 
 use App\Models\ActivityLog;
-use Illuminate\Database\Eloquent\Model;
 
 trait ActivityLogger
 {
     /**
-     * Log CRUD activity automatically
-     * 
-     * Usage di controller:
-     * - $this->logCreate($model, 'Nama Model')
-     * - $this->logUpdate($model, 'Nama Model')
-     * - $this->logDelete($model, 'Nama Model')
+     * =============================================
+     * LOG CREATE ACTION
+     * =============================================
      */
-
-    /**
-     * Log Create (Tambah)
-     */
-    protected function logCreate(Model $model, string $modelName, array $additionalData = [])
+    protected function logCreate($model, string $entityName, array $additionalMetadata = [])
     {
-        $primaryKey = $model->getKeyName();
-        $id = $model->{$primaryKey};
-        
-        // Dapatkan nama yang relevan (plat_nomor, nama, dll)
-        $identifier = $this->getIdentifier($model);
+        $modelData = $model->toArray();
         
         ActivityLog::log(
-            'tambah_' . strtolower(str_replace(' ', '_', $modelName)),
-            "Menambah {$modelName}: {$identifier}",
-            null,
-            array_merge([
-                'model' => get_class($model),
-                'id' => $id,
-                'identifier' => $identifier,
-                'data' => $model->toArray(),
-            ], $additionalData)
+            action: "tambah_{$entityName}",
+            description: "Menambahkan {$entityName}: " . $this->getModelIdentifier($model),
+            idTransaksi: $this->getTransaksiId($model),
+            metadata: array_merge([
+                'entity_type' => get_class($model),
+                'entity_id' => $model->getKey(),
+            ], $additionalMetadata),
+            before: null, // No before data for create
+            after: $modelData // After data shows created record
         );
     }
 
     /**
-     * Log Update (Edit)
+     * =============================================
+     * LOG UPDATE ACTION - WITH BEFORE/AFTER
+     * =============================================
      */
-    protected function logUpdate(Model $model, string $modelName, array $originalData = [], array $additionalData = [])
+    protected function logUpdate($model, string $entityName, array $originalData, array $additionalMetadata = [])
     {
-        $primaryKey = $model->getKeyName();
-        $id = $model->{$primaryKey};
-        
-        $identifier = $this->getIdentifier($model);
-        
-        // Deteksi perubahan
-        $changes = [];
-        if (!empty($originalData)) {
-            foreach ($model->getAttributes() as $key => $value) {
-                if (isset($originalData[$key]) && $originalData[$key] != $value) {
-                    $changes[$key] = [
-                        'old' => $originalData[$key],
-                        'new' => $value,
-                    ];
-                }
-            }
-        }
+        $newData = $model->fresh()->toArray();
         
         ActivityLog::log(
-            'edit_' . strtolower(str_replace(' ', '_', $modelName)),
-            "Mengedit {$modelName}: {$identifier}",
-            null,
-            array_merge([
-                'model' => get_class($model),
-                'id' => $id,
-                'identifier' => $identifier,
-                'changes' => $changes,
-            ], $additionalData)
+            action: "edit_{$entityName}",
+            description: "Mengubah {$entityName}: " . $this->getModelIdentifier($model),
+            idTransaksi: $this->getTransaksiId($model),
+            metadata: array_merge([
+                'entity_type' => get_class($model),
+                'entity_id' => $model->getKey(),
+            ], $additionalMetadata),
+            before: $originalData,
+            after: $newData
         );
     }
 
     /**
-     * Log Delete (Hapus)
+     * =============================================
+     * LOG DELETE ACTION
+     * =============================================
      */
-    protected function logDelete(Model $model, string $modelName, array $additionalData = [])
+    protected function logDelete($model, string $entityName, array $additionalMetadata = [])
     {
-        $primaryKey = $model->getKeyName();
-        $id = $model->{$primaryKey};
-        
-        $identifier = $this->getIdentifier($model);
+        $modelData = $model->toArray();
         
         ActivityLog::log(
-            'hapus_' . strtolower(str_replace(' ', '_', $modelName)),
-            "Menghapus {$modelName}: {$identifier}",
-            null,
-            array_merge([
-                'model' => get_class($model),
-                'id' => $id,
-                'identifier' => $identifier,
-                'deleted_data' => $model->toArray(),
-            ], $additionalData)
+            action: "hapus_{$entityName}",
+            description: "Menghapus {$entityName}: " . $this->getModelIdentifier($model),
+            idTransaksi: $this->getTransaksiId($model),
+            metadata: array_merge([
+                'entity_type' => get_class($model),
+                'entity_id' => $model->getKey(),
+                'soft_delete' => method_exists($model, 'trashed'),
+            ], $additionalMetadata),
+            before: $modelData, // Before shows deleted data
+            after: null // After is null (deleted)
         );
     }
 
     /**
-     * Log Restore (Pulihkan dari Soft Delete)
+     * =============================================
+     * LOG RESTORE ACTION
+     * =============================================
      */
-    protected function logRestore(Model $model, string $modelName, array $additionalData = [])
+    protected function logRestore($model, string $entityName, array $additionalMetadata = [])
     {
-        $primaryKey = $model->getKeyName();
-        $id = $model->{$primaryKey};
-        
-        $identifier = $this->getIdentifier($model);
+        $modelData = $model->toArray();
         
         ActivityLog::log(
-            'restore_' . strtolower(str_replace(' ', '_', $modelName)),
-            "Memulihkan {$modelName}: {$identifier}",
-            null,
-            array_merge([
-                'model' => get_class($model),
-                'id' => $id,
-                'identifier' => $identifier,
-            ], $additionalData)
+            action: "restore_{$entityName}",
+            description: "Memulihkan {$entityName}: " . $this->getModelIdentifier($model),
+            idTransaksi: $this->getTransaksiId($model),
+            metadata: array_merge([
+                'entity_type' => get_class($model),
+                'entity_id' => $model->getKey(),
+            ], $additionalMetadata),
+            before: null, // Before was deleted
+            after: $modelData // After shows restored data
         );
     }
 
     /**
-     * Get identifier dari model (plat_nomor, nama, username, dll)
+     * =============================================
+     * GET MODEL IDENTIFIER (for description)
+     * =============================================
      */
-    private function getIdentifier(Model $model): string
+    private function getModelIdentifier($model): string
     {
-        // Cek field yang umum digunakan sebagai identifier
-        $identifierFields = [
-            'plat_nomor',
-            'nama',
-            'username',
-            'lokasi',
-            'tipe_kendaraan',
-            'metode_bayar',
-            'role_user',
-            'kode_tiket',
+        // Try common identifier fields
+        $identifiers = [
+            'name', 'nama', 'username', 'title', 'judul',
+            'plat_nomor', 'kode_tiket', 'kode_area', 'role_user',
+            'tipe_kendaraan', 'metode_bayar', 'nama_level'
         ];
         
-        foreach ($identifierFields as $field) {
-            if (isset($model->{$field})) {
-                return $model->{$field};
+        foreach ($identifiers as $field) {
+            if (isset($model->$field)) {
+                return $model->$field;
             }
         }
         
-        // Fallback ke primary key
-        $primaryKey = $model->getKeyName();
-        return "ID: " . $model->{$primaryKey};
+        // Fallback to primary key
+        return '#' . $model->getKey();
+    }
+
+    /**
+     * =============================================
+     * GET TRANSACTION ID IF EXISTS
+     * =============================================
+     */
+    private function getTransaksiId($model): ?int
+    {
+        // Check if model has id_transaksi
+        if (isset($model->id_transaksi)) {
+            return $model->id_transaksi;
+        }
+        
+        // Check if model IS a transaction
+        if (get_class($model) === 'App\Models\TransaksiParkir') {
+            return $model->getKey();
+        }
+        
+        return null;
     }
 }

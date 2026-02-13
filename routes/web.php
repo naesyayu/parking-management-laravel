@@ -20,6 +20,7 @@ use App\Http\Controllers\TransaksiKeluarController;
 use App\Http\Controllers\BreakdownLaporanHarianController;
 use App\Http\Controllers\ChangePasswordController;
 use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\LobbyDisplayController;
 
 /*
 |--------------------------------------------------------------------------
@@ -188,6 +189,17 @@ Route::middleware(['auth', 'nocache'])->group(function () {
     Route::get('/laporan/export', [BreakdownLaporanHarianController::class, 'export'])
         ->name('laporan.export')
         ->middleware('check.role:admin');
+
+    // LOBBY DISPLAY (SEMUA ROLE - Real-time Occupancy)
+    Route::get('/lobby-display', [LobbyDisplayController::class, 'index'])->name('lobby.display');
+    Route::get('/lobby-display/data', [LobbyDisplayController::class, 'getOccupancyData'])->name('lobby.data');
+
+
+    Route::middleware(['auth', 'nocache'])->group(function () {
+    
+    
+    });
+    
     
 });
 

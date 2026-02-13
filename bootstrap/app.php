@@ -8,7 +8,7 @@ use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\NoCache;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\AdminMiddleware;
-
+use App\Http\Middleware\LogPageNavigation;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,10 +18,25 @@ return Application::configure(basePath: dirname(__DIR__))
     )
 
     ->withMiddleware(function (Middleware $middleware): void {
+        // ========================================
+        // REGISTER MIDDLEWARE ALIASES
+        // ========================================
         $middleware->alias([
             'check.role' => CheckRole::class,
             'auth'    => Authenticate::class,
             'nocache' => NoCache::class,
+        ]);
+        
+        // ========================================
+        // REGISTER GLOBAL WEB MIDDLEWARE
+        // ========================================
+        $middleware->web(append: [
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            
+            // ADD PAGE NAVIGATION LOGGING MIDDLEWARE
+            LogPageNavigation::class,
         ]);
     })
 

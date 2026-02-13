@@ -224,6 +224,16 @@
                     </li>
                     @endif
 
+                    {{-- Laporan Lobby Display (Semua Role) --}}
+                    @if($role && ($role->hasPermission('lobby_display')))
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('lobby.display') ? 'active' : '' }}" 
+                            href="{{ route('lobby.display') }}" title="Lobby Display">
+                            <i class="fa-solid fa-tv me-1"></i> Lobby Display
+                        </a>
+                    </li>
+                    @endif
+
                     {{-- Laporan Riwayat Transaksi (Semua Role) --}}
                     @if($role && ($role->hasPermission('laporan')))
                     <li class="nav-item">

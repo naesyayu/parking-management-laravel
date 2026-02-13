@@ -178,7 +178,7 @@
 (function() {
     'use strict';
     
-    console.log('=== PARKIR SCRIPT START ===');
+    console.log('=== PARKIR SCRIPT WITH AUTO-FORMAT START ===');
     
     var kapasitasData = {!! json_encode($kapasitas) !!};
     var autocompleteUrl = "{{ route('parkir.masuk.autocomplete.plat') }}";
@@ -224,12 +224,119 @@
     var typingTimer;
     var isKendaraanTerdaftar = false;
     
-    // ==================
-    // AUTO UPPERCASE
-    // ==================
-    platInput.addEventListener('input', function() {
-        this.value = this.value.toUpperCase();
+    // ==========================================
+    // AUTO-FORMAT PLAT NOMOR (INDONESIAN FORMAT)
+    // Format: [1-2 huruf] [SPASI] [1-4 angka] [SPASI] [1-3 huruf]
+    // Contoh: B 1234 ABC, DK 567 XY
+    // ==========================================
+    platInput.addEventListener('input', function(e) {
+        var cursorPos = this.selectionStart;
+        var value = this.value.toUpperCase();
+        
+        // Remove all spaces for processing
+        var cleaned = value.replace(/\s/g, '');
+        
+        // Validate characters (only letters and numbers allowed)
+        cleaned = cleaned.replace(/[^A-Z0-9]/g, '');
+        
+        // Apply formatting
+        var formatted = '';
+        var lettersFirst = '';
+        var numbers = '';
+        var lettersLast = '';
+        
+        // Phase 1: Extract first 1-2 letters (area code)
+        var i = 0;
+        while (i < cleaned.length && /[A-Z]/.test(cleaned[i]) && lettersFirst.length < 2) {
+            lettersFirst += cleaned[i];
+            i++;
+        }
+        
+        // Phase 2: Extract 1-4 numbers
+        while (i < cleaned.length && /[0-9]/.test(cleaned[i]) && numbers.length < 4) {
+            numbers += cleaned[i];
+            i++;
+        }
+        
+        // Phase 3: Extract last 1-3 letters (series code)
+        while (i < cleaned.length && /[A-Z]/.test(cleaned[i]) && lettersLast.length < 3) {
+            lettersLast += cleaned[i];
+            i++;
+        }
+        
+        // Build formatted string
+        if (lettersFirst) {
+            formatted = lettersFirst;
+        }
+        
+        if (numbers) {
+            formatted += (formatted ? ' ' : '') + numbers;
+        }
+        
+        if (lettersLast) {
+            formatted += (formatted ? ' ' : '') + lettersLast;
+        }
+        
+        // Update input value
+        this.value = formatted;
+        
+        // Restore cursor position (approximate)
+        var newCursorPos = cursorPos;
+        if (formatted.length < value.length) {
+            newCursorPos = Math.max(0, cursorPos - (value.length - formatted.length));
+        }
+        this.setSelectionRange(newCursorPos, newCursorPos);
+        
+        // Real-time validation feedback
+        validatePlatFormat(formatted);
     });
+    
+    // ==========================================
+    // VALIDATE PLAT FORMAT (REAL-TIME)
+    // ==========================================
+    function validatePlatFormat(plat) {
+        if (!plat || plat.length === 0) {
+            statusDiv.innerHTML = '';
+            return true;
+        }
+        
+        // Pattern: [1-2 letters] [SPACE] [1-4 numbers] [SPACE] [1-3 letters]
+        var pattern = /^[A-Z]{1,2}\s\d{1,4}\s[A-Z]{1,3}$/;
+        
+        if (pattern.test(plat)) {
+            // Valid format
+            if (!isKendaraanTerdaftar) {
+                statusDiv.innerHTML = '<div class="alert alert-success alert-sm mt-2"><i class="fas fa-check-circle"></i> Format plat nomor valid</div>';
+            }
+            return true;
+        } else {
+            // Invalid or incomplete
+            var parts = plat.split(' ');
+            var hints = [];
+            
+            if (parts.length < 3) {
+                hints.push('Format: <strong>HURUF ANGKA HURUF</strong>');
+            }
+            
+            if (parts[0] && !/^[A-Z]{1,2}$/.test(parts[0])) {
+                hints.push('Kode area: 1-2 huruf');
+            }
+            
+            if (parts[1] && !/^\d{1,4}$/.test(parts[1])) {
+                hints.push('Nomor: 1-4 angka');
+            }
+            
+            if (parts[2] && !/^[A-Z]{1,3}$/.test(parts[2])) {
+                hints.push('Kode seri: 1-3 huruf');
+            }
+            
+            if (hints.length > 0 && !isKendaraanTerdaftar) {
+                statusDiv.innerHTML = '<div class="alert alert-warning alert-sm mt-2"><i class="fas fa-info-circle"></i> ' + hints.join(' • ') + '<br><small class="text-muted">Contoh: <strong>B 1234 ABC</strong> atau <strong>DK 567 XY</strong></small></div>';
+            }
+            
+            return false;
+        }
+    }
     
     // ==================
     // SYNC SELECT & HIDDEN
@@ -238,7 +345,6 @@
         tipeHidden.value = this.value;
         console.log('Tipe changed:', this.value);
         
-        // Show area select if tipe selected
         if (this.value) {
             showAreaSelect(this.value);
         } else {
@@ -252,10 +358,8 @@
     function showAreaSelect(idTipe) {
         console.log('Showing areas for tipe:', idTipe);
         
-        // Clear previous options
         areaSelect.innerHTML = '<option value="">-- Pilih Area --</option>';
         
-        // Check if this tipe has available areas
         if (!kapasitasData[idTipe] || kapasitasData[idTipe].length === 0) {
             areaSelectContainer.style.display = 'none';
             alert('Tidak ada slot tersedia untuk tipe kendaraan ini!');
@@ -264,7 +368,6 @@
             return;
         }
         
-        // Populate area options
         kapasitasData[idTipe].forEach(function(area) {
             if (area.kapasitas > 0) {
                 var option = document.createElement('option');
@@ -274,17 +377,15 @@
             }
         });
         
-        // Show area select
         areaSelectContainer.style.display = 'block';
         
-        // If only one area available, select it automatically
         if (areaSelect.options.length === 2) {
             areaSelect.selectedIndex = 1;
         }
     }
     
     // ==================
-    // AUTOCOMPLETE (same as before)
+    // AUTOCOMPLETE
     // ==================
     platInput.addEventListener('keyup', function() {
         var keyword = this.value.trim();
@@ -293,9 +394,11 @@
         
         isKendaraanTerdaftar = false;
         
-        if (keyword.length < 1) {
+        if (keyword.length < 2) {
             platDropdown.style.display = 'none';
-            statusDiv.innerHTML = '';
+            if (!keyword) {
+                statusDiv.innerHTML = '';
+            }
             tipeSelect.disabled = false;
             tipeSelect.value = '';
             tipeHidden.value = '';
@@ -305,7 +408,7 @@
         
         typingTimer = setTimeout(function() {
             cariPlat(keyword);
-        }, 300);
+        }, 500);
     });
     
     function cariPlat(keyword) {
@@ -325,7 +428,7 @@
                 if (data.length === 0) {
                     platDropdown.innerHTML = '<li class="list-group-item text-muted">Tidak ditemukan</li>';
                     
-                    statusDiv.innerHTML = '<div class="alert alert-warning mt-2"><i class="fas fa-plus-circle"></i> <strong>Kendaraan Baru</strong><br>Pilih tipe kendaraan</div>';
+                    statusDiv.innerHTML = '<div class="alert alert-info mt-2"><i class="fas fa-plus-circle"></i> <strong>Kendaraan Baru</strong><br>Pastikan format plat sudah benar, lalu pilih tipe kendaraan</div>';
                     
                     tipeSelect.disabled = false;
                     isKendaraanTerdaftar = false;
@@ -374,11 +477,9 @@
         
         statusDiv.innerHTML = '<div class="alert alert-success mt-2"><i class="fas fa-check-circle"></i> <strong>Kendaraan Terdaftar</strong><br>' + item.plat_nomor + ' - ' + item.tipe_kendaraan + '</div>';
         
-        // Show area select
         showAreaSelect(item.id_tipe);
     }
     
-    // Close dropdown
     document.addEventListener('click', function(e) {
         if (e.target !== platInput && !platDropdown.contains(e.target)) {
             platDropdown.style.display = 'none';
@@ -386,7 +487,7 @@
     });
     
     // ==================
-    // FORM SUBMIT
+    // FORM SUBMIT WITH VALIDATION
     // ==================
     formParkir.addEventListener('submit', function(e) {
         console.log('Form submitting...');
@@ -399,7 +500,7 @@
             tipeHidden.value = tipeSelect.value;
         }
         
-        // Validation
+        // Validation 1: Plat nomor
         if (!platInput.value.trim()) {
             e.preventDefault();
             alert('Plat nomor harus diisi!');
@@ -407,6 +508,15 @@
             return false;
         }
         
+        // Validation 2: Plat format
+        if (!validatePlatFormat(platInput.value.trim())) {
+            e.preventDefault();
+            alert('Format plat nomor tidak valid!\n\nFormat yang benar:\n• 1-2 huruf (kode area)\n• 1-4 angka\n• 1-3 huruf (kode seri)\n\nContoh: B 1234 ABC, DK 567 XY');
+            platInput.focus();
+            return false;
+        }
+        
+        // Validation 3: Tipe
         if (!tipeHidden.value) {
             e.preventDefault();
             alert('Tipe kendaraan harus dipilih!');
@@ -414,7 +524,7 @@
             return false;
         }
         
-        // Check if area selection is shown and required
+        // Validation 4: Area (if shown)
         if (areaSelectContainer.style.display !== 'none' && !areaSelect.value) {
             e.preventDefault();
             alert('Area parkir harus dipilih!');
@@ -429,8 +539,16 @@
         console.log('Form valid, submitting...');
     });
     
-    console.log('=== SCRIPT READY ===');
+    console.log('=== SCRIPT WITH AUTO-FORMAT READY ===');
     
 })();
 </script>
+
+<style>
+/* Alert sizes */
+.alert-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+</style>
 @endsection

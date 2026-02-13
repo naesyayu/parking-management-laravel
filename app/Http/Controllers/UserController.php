@@ -16,8 +16,10 @@ class UserController extends Controller
     
     public function index()
     {
-        $user = User::with('role')->get();
-        return view('user.index', compact('user'));
+        $users = User::with('role')->get();
+        $currentUserId = Auth::id(); // Pass current user ID ke view
+        
+        return view('user.index', compact('users', 'currentUserId'));
     }
 
     public function create()
@@ -53,12 +55,30 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        // ========================================
+        // PREVENT SELF EDIT VIA CRUD
+        // ========================================
+        if ($user->id_user === Auth::id()) {
+            return redirect()
+                ->route('user.index')
+                ->with('error', 'Anda tidak dapat mengedit data Anda sendiri. Gunakan menu "Ubah Password" untuk mengubah password.');
+        }
+        
         $roles = Role::all();
         return view('user.edit', compact('user', 'roles'));
     }
 
     public function update(Request $request, User $user)
     {
+        // ========================================
+        // PREVENT SELF UPDATE VIA CRUD
+        // ========================================
+        if ($user->id_user === Auth::id()) {
+            return redirect()
+                ->route('user.index')
+                ->with('error', 'Anda tidak dapat mengubah data Anda sendiri melalui halaman ini.');
+        }
+        
         $request->validate([
             'username' => 'required|unique:users,username,' . $user->id_user . ',id_user',
             'id_role' => 'required',
@@ -84,10 +104,33 @@ class UserController extends Controller
             ->with('success', 'User berhasil diperbarui');
     }
 
+    public function destroy(User $user)
+    {
+        // ========================================
+        // PREVENT SELF DELETE
+        // ========================================
+        if ($user->id_user === Auth::id()) {
+            return redirect()
+                ->route('user.index')
+                ->with('error', 'Anda tidak dapat menghapus akun Anda sendiri!');
+        }
+        
+        // Load relasi sebelum delete
+        $user->load('role');
+        
+        $this->logDelete($user, 'user', [
+            'role' => $user->role->role_user ?? null,
+        ]);
+        
+        $user->delete();
+        
+        return redirect()->route('user.index')->with('success', 'User berhasil dihapus');
+    }
+
     public function trash()
     {
-        $user = User::onlyTrashed()->with('role')->get();
-        return view('user.trash', compact('user'));
+        $users = User::onlyTrashed()->with('role')->get();
+        return view('user.trash', compact('users'));
     }
 
     public function restore($id)
@@ -105,20 +148,6 @@ class UserController extends Controller
         return redirect()
             ->route('user.trash')
             ->with('success', 'User berhasil dikembalikan');
-    }
-
-    public function destroy(User $user)
-    {
-        // Load relasi sebelum delete
-        $user->load('role');
-        
-        $this->logDelete($user, 'user', [
-            'role' => $user->role->role_user ?? null,
-        ]);
-        
-        $user->delete();
-        
-        return redirect()->route('user.index')->with('success', 'User berhasil dihapus');
     }
 
     // ========================================

@@ -26,28 +26,7 @@ class BreakdownLaporanHarianController extends Controller
             'metodePembayaran'
         ])->where('status', 'out');
 
-        if ($request->filled('plat_nomor')) {
-            $query->whereHas('kendaraan', fn($q) => 
-                $q->where('plat_nomor', 'like', '%' . $request->plat_nomor . '%')
-            );
-        }
-        if ($request->filled('id_area')) {
-            $query->where('id_area', $request->id_area);
-        }
-        if ($request->filled('start_date')) {
-            $query->whereDate('waktu_keluar', '>=', $request->start_date);
-        }
-        if ($request->filled('end_date')) {
-            $query->whereDate('waktu_keluar', '<=', $request->end_date);
-        }
-        if ($request->filled('id_metode')) {
-            $query->where('id_metode', $request->id_metode);
-        }
-        if ($request->filled('id_tipe')) {
-            $query->whereHas('kendaraan', fn($q) => 
-                $q->where('id_tipe', $request->id_tipe)
-            );
-        }
+        // ... (keep existing filters)
 
         $summary = [
             'total_transaksi' => (clone $query)->count(),
@@ -75,7 +54,9 @@ class BreakdownLaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
-        $occupancy = $this->getOccupancyDetailed(); // ← CHANGED METHOD
+        // CHANGED: Historical breakdown instead of real-time occupancy
+        $breakdownPerArea = $this->getBreakdownTransaksiPerArea($request);
+
         $areas = AreaParkir::all();
         $metodes = MetodePembayaran::all();
         $tipes = TipeKendaraan::all();
@@ -97,7 +78,7 @@ class BreakdownLaporanHarianController extends Controller
             'summary',
             'breakdownTipe',
             'breakdownMetode',
-            'occupancy',
+            'breakdownPerArea', // ← CHANGED
             'areas',
             'metodes',
             'tipes',
@@ -107,63 +88,71 @@ class BreakdownLaporanHarianController extends Controller
             'chartMetode'
         ));
     }
-
+    
     /**
      * ========================================
-     * GET OCCUPANCY DETAILED (PER AREA & TIPE)
+     * GET BREAKDOWN TRANSAKSI PER AREA & TIPE (HISTORICAL)
      * ========================================
      */
-    private function getOccupancyDetailed()
+    private function getBreakdownTransaksiPerArea(Request $request)
     {
-        return AreaParkir::with(['kapasitas.tipe'])
-            ->get()
-            ->map(function($area) {
-                $kapasitasDetails = $area->kapasitas->map(function($kap) use ($area) {
-                    // Hitung kendaraan yang sedang parkir untuk area & tipe ini
-                    $terpakai = TransaksiParkir::where('id_area', $area->id_area)
-                        ->where('status', 'in')
-                        ->whereHas('kendaraan', function($q) use ($kap) {
-                            $q->where('id_tipe', $kap->id_tipe);
-                        })
-                        ->count();
-                    
-                    $total = $kap->kapasitas + $terpakai;
-                    $rate = $total > 0 
-                        ? round(($terpakai / $total) * 100, 1) 
-                        : 0;
-                    
-                    return [
-                        'tipe' => $kap->tipe->tipe_kendaraan ?? 'N/A',
-                        'kode_tipe' => $kap->tipe->kode_tipe ?? 'N/A',
-                        'tersedia' => $kap->kapasitas,
-                        'terpakai' => $terpakai,
-                        'total' => $total,
-                        'rate' => $rate,
-                    ];
-                });
+        // Build query dengan filter yang sama
+        $query = TransaksiParkir::with(['kendaraan.tipe', 'areaParkir'])
+            ->where('status', 'out');
+
+        // Apply filters
+        if ($request->filled('id_area')) {
+            $query->where('id_area', $request->id_area);
+        }
+        if ($request->filled('start_date')) {
+            $query->whereDate('waktu_keluar', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('waktu_keluar', '<=', $request->end_date);
+        }
+        if ($request->filled('id_tipe')) {
+            $query->whereHas('kendaraan', fn($q) => 
+                $q->where('id_tipe', $request->id_tipe)
+            );
+        }
+
+        $transaksi = $query->get();
+
+        // Group by area, then by tipe
+        return $transaksi
+            ->groupBy('id_area')
+            ->map(function($areaTransaksi) {
+                $firstItem = $areaTransaksi->first();
                 
-                // Calculate overall occupancy for this area
-                $totalKapasitas = $area->kapasitas->sum('kapasitas');
-                $totalTerpakai = TransaksiParkir::where('id_area', $area->id_area)
-                    ->where('status', 'in')
-                    ->count();
-                $totalSlot = $totalKapasitas + $totalTerpakai;
-                $overallRate = $totalSlot > 0 
-                    ? round(($totalTerpakai / $totalSlot) * 100, 1) 
-                    : 0;
-                
+                if (!$firstItem || !$firstItem->areaParkir) {
+                    return null;
+                }
+
+                $breakdown = $areaTransaksi
+                    ->filter(fn($t) => $t->kendaraan && $t->kendaraan->tipe)
+                    ->groupBy('kendaraan.id_tipe')
+                    ->map(fn($items) => [
+                        'tipe' => $items->first()->kendaraan->tipe->tipe_kendaraan,
+                        'kode_tipe' => $items->first()->kendaraan->tipe->kode_tipe,
+                        'jumlah' => $items->count(),
+                        'revenue' => $items->sum('total_bayar'),
+                        'diskon' => $items->sum('diskon'),
+                        'avg' => round($items->avg('total_bayar'), 0),
+                    ]);
+
                 return [
-                    'area_id' => $area->id_area,
-                    'area_name' => $area->nama_area,
-                    'area_lokasi' => $area->lokasi,
-                    'overall_rate' => $overallRate,
-                    'total_slot' => $totalSlot,
-                    'total_tersedia' => $totalKapasitas,
-                    'total_terpakai' => $totalTerpakai,
-                    'breakdown' => $kapasitasDetails,
+                    'area_id' => $firstItem->id_area,
+                    'area_name' => $firstItem->areaParkir->nama_area,
+                    'area_lokasi' => $firstItem->areaParkir->lokasi,
+                    'total_transaksi' => $areaTransaksi->count(),
+                    'total_revenue' => $areaTransaksi->sum('total_bayar'),
+                    'total_diskon' => $areaTransaksi->sum('diskon'),
+                    'avg_per_transaksi' => round($areaTransaksi->avg('total_bayar'), 0),
+                    'breakdown' => $breakdown,
                 ];
             })
-            ->filter(fn($item) => $item['breakdown']->isNotEmpty()); // Only areas with capacity
+            ->filter()
+            ->values();
     }
 
     /**
@@ -230,7 +219,7 @@ class BreakdownLaporanHarianController extends Controller
                 'avg' => round($items->avg('total_bayar'), 0),
             ]);
 
-        $occupancy = $this->getOccupancyDetailed(); // ← CHANGED METHOD
+        $occupancy = $this->getBreakdownTransaksiPerArea(); // ← CHANGED METHOD
 
         $filename = 'Laporan_Breakdown_' . now()->format('Ymd_His') . '.csv';
 

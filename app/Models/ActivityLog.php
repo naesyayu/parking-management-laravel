@@ -44,30 +44,139 @@ class ActivityLog extends Model
 
     /**
      * =============================================
-     * HELPER METHOD: LOG AKTIVITAS
+     * ENHANCED LOG METHOD - WITH BEFORE/AFTER
      * =============================================
      * 
-     * Contoh penggunaan:
-     * ActivityLog::log('login', 'User berhasil login');
-     * ActivityLog::log('transaksi_masuk', 'Kendaraan masuk', $idTransaksi, ['plat' => 'B 1234 ABC']);
+     * @param string $action - Action type
+     * @param string|null $description - Description
+     * @param int|null $idTransaksi - Transaction ID
+     * @param array $metadata - Additional metadata
+     * @param array|null $before - Data before change
+     * @param array|null $after - Data after change
      */
     public static function log(
         string $action,
         string $description = null,
         int $idTransaksi = null,
-        array $metadata = []
+        array $metadata = [],
+        array $before = null,
+        array $after = null
     ): self {
+        // Build complete metadata
+        $completeMetadata = [
+            'timestamp' => now()->toIso8601String(),
+            'url' => Request::fullUrl(),
+            'method' => Request::method(),
+            'referer' => Request::header('referer'),
+        ];
+        
+        // Add before/after if provided
+        if ($before !== null) {
+            $completeMetadata['before'] = $before;
+        }
+        
+        if ($after !== null) {
+            $completeMetadata['after'] = $after;
+        }
+        
+        // Add changes summary if both before and after exist
+        if ($before !== null && $after !== null) {
+            $completeMetadata['changes'] = self::detectChanges($before, $after);
+        }
+        
+        // Merge with custom metadata
+        $completeMetadata = array_merge($completeMetadata, $metadata);
+        
         return self::create([
             'id_user' => Auth::id(),
             'action' => $action,
             'description' => $description,
             'id_transaksi' => $idTransaksi,
-            'metadata' => array_merge($metadata, [
-                'timestamp' => now()->toIso8601String(),
-            ]),
+            'metadata' => $completeMetadata,
             'ip_address' => Request::ip(),
             'user_agent' => Request::userAgent(),
         ]);
+    }
+    
+    /**
+     * =============================================
+     * LOG FAILED LOGIN (No User ID)
+     * =============================================
+     */
+    public static function logFailedLogin(string $username, string $reason = 'Invalid credentials'): self
+    {
+        return self::create([
+            'id_user' => null, // No user ID because login failed
+            'action' => 'login_failed',
+            'description' => "Failed login attempt for username: {$username}",
+            'id_transaksi' => null,
+            'metadata' => [
+                'username_attempted' => $username,
+                'reason' => $reason,
+                'timestamp' => now()->toIso8601String(),
+                'url' => Request::fullUrl(),
+            ],
+            'ip_address' => Request::ip(),
+            'user_agent' => Request::userAgent(),
+        ]);
+    }
+    
+    /**
+     * =============================================
+     * LOG PAGE NAVIGATION
+     * =============================================
+     */
+    public static function logNavigation(string $routeName, string $url): self
+    {
+        return self::create([
+            'id_user' => Auth::id(),
+            'action' => 'page_view',
+            'description' => "User navigated to: {$routeName}",
+            'id_transaksi' => null,
+            'metadata' => [
+                'route_name' => $routeName,
+                'url' => $url,
+                'previous_url' => Request::header('referer'),
+                'timestamp' => now()->toIso8601String(),
+            ],
+            'ip_address' => Request::ip(),
+            'user_agent' => Request::userAgent(),
+        ]);
+    }
+    
+    /**
+     * =============================================
+     * DETECT CHANGES BETWEEN BEFORE & AFTER
+     * =============================================
+     */
+    private static function detectChanges(array $before, array $after): array
+    {
+        $changes = [];
+        
+        // Find all keys
+        $allKeys = array_unique(array_merge(array_keys($before), array_keys($after)));
+        
+        foreach ($allKeys as $key) {
+            $oldValue = $before[$key] ?? null;
+            $newValue = $after[$key] ?? null;
+            
+            // Skip if unchanged
+            if ($oldValue === $newValue) {
+                continue;
+            }
+            
+            // Skip sensitive fields
+            if (in_array($key, ['password', 'remember_token', 'created_at', 'updated_at', 'deleted_at'])) {
+                continue;
+            }
+            
+            $changes[$key] = [
+                'from' => $oldValue,
+                'to' => $newValue,
+            ];
+        }
+        
+        return $changes;
     }
 
     /**
@@ -109,6 +218,26 @@ class ActivityLog extends Model
     {
         return $query->whereDate('created_at', today());
     }
+    
+    /**
+     * =============================================
+     * SCOPE: FAILED LOGINS ONLY
+     * =============================================
+     */
+    public function scopeFailedLogins($query)
+    {
+        return $query->where('action', 'login_failed');
+    }
+    
+    /**
+     * =============================================
+     * SCOPE: PAGE VIEWS ONLY
+     * =============================================
+     */
+    public function scopePageViews($query)
+    {
+        return $query->where('action', 'page_view');
+    }
 
     /**
      * =============================================
@@ -127,6 +256,26 @@ class ActivityLog extends Model
      */
     public function getUsernameAttribute()
     {
-        return $this->user?->username ?? 'System';
+        return $this->user?->username ?? 'Guest/System';
+    }
+    
+    /**
+     * =============================================
+     * ACCESSOR: Has Changes
+     * =============================================
+     */
+    public function getHasChangesAttribute()
+    {
+        return isset($this->metadata['changes']) && count($this->metadata['changes']) > 0;
+    }
+    
+    /**
+     * =============================================
+     * ACCESSOR: Changes Count
+     * =============================================
+     */
+    public function getChangesCountAttribute()
+    {
+        return isset($this->metadata['changes']) ? count($this->metadata['changes']) : 0;
     }
 }

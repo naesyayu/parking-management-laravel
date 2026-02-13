@@ -133,7 +133,7 @@
                             </tr>
                             <tr>
                                 <td>Petugas</td>
-                                <td>: {{ $transaksi->user->name ?? 'Sistem' }}</td>
+                                <td>: {{ $transaksi->user->username}}</td>
                             </tr>
                             <tr>
                                 <td>Status</td>
@@ -157,8 +157,8 @@
                         <a href="{{ route('parkir.keluar') }}" class="btn btn-success">
                             <i class="fas fa-plus-circle me-2"></i> Transaksi Baru
                         </a>
-                        <a href="{{ route('parkir.masuk') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-2"></i> Kembali
+                        <a href="{{ route('dashboard.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i> Kembali ke Dashboard
                         </a>
                     </div>
                 </div>

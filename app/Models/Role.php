@@ -78,6 +78,7 @@ class Role extends Model
                 'change_password' => true,     // Owner ganti password
                 'detail_transaksi' => true,    // Owner lihat detail
                 'table_master' => true,        // Owner lihat view master
+                'lobby_display' => true,      // Owner akses lobby display
             ];
         }
 
@@ -91,6 +92,7 @@ class Role extends Model
                 'change_password' => true,     // Admin ganti password
                 'detail_transaksi' => true,    // Admin lihat detail
                 'table_master' => true,        // Admin lihat view master
+                'lobby_display' => true,      // Admin akses lobby display
             ];
         }
 
@@ -104,6 +106,7 @@ class Role extends Model
                 'change_password' => true,     // Petugas ganti password
                 'detail_transaksi' => true,    // Petugas lihat detail transaksi sendiri
                 'table_master' => true,        // Petugas lihat view master (read-only)
+                'lobby_display' => true,      // Petugas akses lobby display
             ];
         }
 

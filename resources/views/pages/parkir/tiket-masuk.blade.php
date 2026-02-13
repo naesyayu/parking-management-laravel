@@ -146,6 +146,9 @@
                         <a href="{{ route('parkir.masuk') }}" class="btn btn-success btn-lg">
                             <i class="fas fa-plus-circle"></i> Transaksi Baru
                         </a>
+                        <a href="{{ route('dashboard.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i> Kembali ke Dashboard
+                        </a>
                     </div>
                 </div>
 

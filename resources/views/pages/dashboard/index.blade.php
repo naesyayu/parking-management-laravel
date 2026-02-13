@@ -5,6 +5,17 @@
 @section('content')
 <div class="container-fluid">
     
+    {{-- DEBUG SESSION (HAPUS SETELAH TESTING) --}}
+    @if(config('app.debug'))
+    <div class="alert alert-info alert-dismissible fade show">
+        <strong>DEBUG SESSION:</strong><br>
+        login_success: {{ session('login_success') ? 'TRUE' : 'FALSE' }}<br>
+        username: {{ session('username') ?? 'NULL' }}<br>
+        role: {{ session('role') ?? 'NULL' }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     {{-- HEADER --}}
     <div class="row mb-4">
         <div class="col-12">
@@ -31,7 +42,7 @@
         </div>
     </div>
 
-    {{-- ALERT OCCUPANCY (NEW) --}}
+    {{-- ALERT OCCUPANCY --}}
     @php
         $alertAreas = $data['occupancy']->filter(function($occ) {
             return $occ['alert_level'] === 'warning' || $occ['alert_level'] === 'full';
@@ -66,7 +77,6 @@
     
     {{-- STATISTIK CARDS --}}
     <div class="row g-4 mb-4">
-        {{-- Cards tetap sama ... --}}
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card stat-card-1">
                 <div class="card-body">
@@ -139,7 +149,7 @@
         </div>
     </div>
 
-    {{-- REST OF CONTENT SAMA ... (Charts, Occupancy, Transaksi) --}}
+    {{-- CHARTS --}}
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="card shadow border-0">
@@ -168,6 +178,7 @@
         </div>
     </div>
     
+    {{-- OCCUPANCY & PAYMENT METHOD --}}
     <div class="row g-4 mb-4">
         <div class="col-lg-6">
             <div class="card shadow border-0">
@@ -192,7 +203,6 @@
                                 {{ $occ['tersedia'] }} tersedia
                             </div>
                         </div>
-                        {{-- Alert Badge --}}
                         @if($occ['alert_level'] === 'full')
                             <small class="badge bg-danger mt-1">PENUH</small>
                         @elseif($occ['alert_level'] === 'warning')
@@ -243,6 +253,7 @@
         </div>
     </div>
     
+    {{-- PARKING LIST --}}
     <div class="row">
         <div class="col-12">
             <div class="card shadow border-0">
@@ -295,37 +306,64 @@
 </div>
 
 @push('scripts')
-<!-- SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
 // ========================================
-// LOGIN SUCCESS NOTIFICATION (TOAST)
+// LOGIN SUCCESS NOTIFICATION
+// DIPINDAH KE PALING ATAS SEBELUM SCRIPT LAIN
 // ========================================
+console.log('Script dashboard loaded');
+
+// Check if SweetAlert is loaded
+if (typeof Swal === 'undefined') {
+    console.error('SweetAlert2 not loaded!');
+} else {
+    console.log('SweetAlert2 is available');
+}
+
 @if(session('login_success'))
-    const username = "{{ session('username') ?? Auth::user()->username }}";
+    console.log('Session login_success detected!');
     
-    Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: `${username} berhasil login!`,
-        text: `Selamat datang ${username}!`,
-        showConfirmButton: false,
-        timer: 4000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-            toast.addEventListener('mouseenter', Swal.stopTimer)
-            toast.addEventListener('mouseleave', Swal.resumeTimer)
-        }
+    // Wait for DOM and SweetAlert to be fully ready
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, showing notification...');
+        
+        const username = "{{ session('username') ?? Auth::user()->username }}";
+        const role = "{{ session('role') ?? $role->role_user }}";
+        
+        console.log('Username:', username);
+        console.log('Role:', role);
+        
+        // Use setTimeout to ensure all scripts are loaded
+        setTimeout(function() {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Login Berhasil!',
+                    html: '<strong>' + username + '</strong> berhasil masuk<br><small class="text-muted">Role: ' + role + '</small>',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    background: '#fff',
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+                console.log('Notification shown!');
+            } else {
+                console.error('Swal still not available after timeout');
+                // Fallback: show browser alert
+                alert('Selamat datang ' + username + ' (' + role + ')!');
+            }
+        }, 500);
     });
-    
-    // OPTIONAL: Play sound
-    // const audio = new Audio('/sounds/notification.mp3');
-    // audio.play().catch(e => console.log('Audio play failed:', e));
+@else
+    console.log('No login_success session');
 @endif
 
 // ========================================
@@ -340,9 +378,11 @@ function updateJam() {
     var hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     var bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
     
-    document.getElementById('jamSekarang').textContent = jam + ':' + menit + ':' + detik;
-    document.getElementById('tanggalSekarang').textContent = 
-        hari[now.getDay()] + ', ' + now.getDate() + ' ' + bulan[now.getMonth()] + ' ' + now.getFullYear();
+    var jamEl = document.getElementById('jamSekarang');
+    var tanggalEl = document.getElementById('tanggalSekarang');
+    
+    if (jamEl) jamEl.textContent = jam + ':' + menit + ':' + detik;
+    if (tanggalEl) tanggalEl.textContent = hari[now.getDay()] + ', ' + now.getDate() + ' ' + bulan[now.getMonth()] + ' ' + now.getFullYear();
 }
 
 setInterval(updateJam, 1000);
@@ -351,64 +391,68 @@ updateJam();
 // ========================================
 // Chart Transaksi 7 Hari
 // ========================================
-const ctxTransaksi = document.getElementById('chartTransaksi').getContext('2d');
-new Chart(ctxTransaksi, {
-    type: 'line',
-    data: {
-        labels: @json($data['chart_labels']),
-        datasets: [{
-            label: 'Transaksi',
-            data: @json($data['chart_data_transaksi']),
-            borderColor: 'rgb(102, 126, 234)',
-            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-            tension: 0.4,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                display: true,
-                position: 'top'
-            }
+const ctxTransaksi = document.getElementById('chartTransaksi');
+if (ctxTransaksi) {
+    new Chart(ctxTransaksi.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: @json($data['chart_labels']),
+            datasets: [{
+                label: 'Transaksi',
+                data: @json($data['chart_data_transaksi']),
+                borderColor: 'rgb(102, 126, 234)',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
         },
-        scales: {
-            y: {
-                beginAtZero: true
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
             }
         }
-    }
-});
+    });
+}
 
 // ========================================
 // Chart Tipe Kendaraan (Doughnut)
 // ========================================
-const ctxTipe = document.getElementById('chartTipe').getContext('2d');
-new Chart(ctxTipe, {
-    type: 'doughnut',
-    data: {
-        labels: @json($data['breakdown_tipe']->pluck('tipe')),
-        datasets: [{
-            data: @json($data['breakdown_tipe']->pluck('count')),
-            backgroundColor: [
-                'rgba(102, 126, 234, 0.8)',
-                'rgba(118, 75, 162, 0.8)',
-                'rgba(250, 112, 154, 0.8)',
-                'rgba(254, 234, 64, 0.8)',
-                'rgba(56, 239, 125, 0.8)'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'bottom'
+const ctxTipe = document.getElementById('chartTipe');
+if (ctxTipe) {
+    new Chart(ctxTipe.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: @json($data['breakdown_tipe']->pluck('tipe')),
+            datasets: [{
+                data: @json($data['breakdown_tipe']->pluck('count')),
+                backgroundColor: [
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(118, 75, 162, 0.8)',
+                    'rgba(250, 112, 154, 0.8)',
+                    'rgba(254, 234, 64, 0.8)',
+                    'rgba(56, 239, 125, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
             }
         }
-    }
-});
+    });
+}
 </script>
 @endpush
 

@@ -55,7 +55,7 @@
                             <td>{{ $loop->iteration }}</td>
                             <td><strong>{{ $item->pemilik->nama }}</strong></td>
                             <td><span class="badge bg-info">{{ $item->level->nama_level }}</span></td>
-                            <td>{{ $item->level->diskon }}%</td>
+                            <td>{{ $item->level->diskon_persen }}%</td>
                             <td>{{ \Carbon\Carbon::parse($item->berlaku_mulai)->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($item->berlaku_hingga)->format('d/m/Y') }}</td>
                             <td>
                                 <span class="badge bg-{{ $item->status=='aktif'?'success':'danger' }}">
