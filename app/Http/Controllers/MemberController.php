@@ -29,8 +29,13 @@ class MemberController extends Controller
 
     public function create()
     {
-        $pemiliks = Pemilik::all();
-        $levels   = MemberLevel::all();
+        // Ambil ID pemilik yang sudah terdaftar sebagai member (tidak termasuk yang soft deleted)
+        $registeredPemilikIds = Member::pluck('id_pemilik')->toArray();
+        
+        // Tampilkan hanya pemilik yang belum terdaftar sebagai member
+        $pemiliks = Pemilik::whereNotIn('id_pemilik', $registeredPemilikIds)->get();
+        
+        $levels = MemberLevel::all();
 
         return view('member.create', compact('pemiliks', 'levels'));
     }
@@ -38,11 +43,30 @@ class MemberController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'id_pemilik'      => 'required|exists:pemilik,id_pemilik',
+            'id_pemilik'      => [
+                'required',
+                'exists:pemilik,id_pemilik',
+                // Validasi: pastikan pemilik belum terdaftar sebagai member
+                function ($attribute, $value, $fail) {
+                    if (Member::where('id_pemilik', $value)->exists()) {
+                        $pemilik = Pemilik::find($value);
+                        $fail('Pemilik "' . ($pemilik->nama ?? 'ini') . '" sudah terdaftar sebagai member.');
+                    }
+                },
+            ],
             'id_level'        => 'required|exists:member_level,id_level',
-            'berlaku_mulai'   => 'required|date',
-            'berlaku_hingga'  => 'required|date|after_or_equal:berlaku_mulai',
+            'berlaku_mulai'   => 'required|date|after_or_equal:today',
+            'berlaku_hingga'  => 'required|date|after:berlaku_mulai',
             'status'          => 'required|in:aktif,expired',
+        ], [
+            'id_pemilik.required' => 'Pemilik harus dipilih',
+            'id_pemilik.exists' => 'Pemilik tidak valid',
+            'id_level.required' => 'Level member harus dipilih',
+            'berlaku_mulai.required' => 'Tanggal berlaku mulai harus diisi',
+            'berlaku_mulai.after_or_equal' => 'Tanggal berlaku mulai tidak boleh sebelum hari ini',
+            'berlaku_hingga.required' => 'Tanggal berlaku hingga harus diisi',
+            'berlaku_hingga.after' => 'Tanggal berlaku hingga harus setelah tanggal berlaku mulai',
+            'status.required' => 'Status harus dipilih',
         ]);
 
         $member = Member::create([
@@ -69,8 +93,16 @@ class MemberController extends Controller
 
     public function edit(Member $member)
     {
-        $pemiliks = Pemilik::all();
-        $levels   = MemberLevel::all();
+        // Ambil ID pemilik yang sudah terdaftar sebagai member
+        // KECUALI pemilik dari member yang sedang diedit
+        $registeredPemilikIds = Member::where('id_member', '!=', $member->id_member)
+                                      ->pluck('id_pemilik')
+                                      ->toArray();
+        
+        // Tampilkan pemilik yang belum terdaftar + pemilik member saat ini
+        $pemiliks = Pemilik::whereNotIn('id_pemilik', $registeredPemilikIds)->get();
+        
+        $levels = MemberLevel::all();
 
         return view('member.edit', compact('member', 'pemiliks', 'levels'));
     }
@@ -78,11 +110,34 @@ class MemberController extends Controller
     public function update(Request $request, Member $member)
     {
         $request->validate([
-            'id_pemilik'      => 'required|exists:pemilik,id_pemilik',
+            'id_pemilik'      => [
+                'required',
+                'exists:pemilik,id_pemilik',
+                // Validasi: pastikan pemilik belum terdaftar sebagai member (kecuali member ini sendiri)
+                function ($attribute, $value, $fail) use ($member) {
+                    $exists = Member::where('id_pemilik', $value)
+                                    ->where('id_member', '!=', $member->id_member)
+                                    ->exists();
+                    
+                    if ($exists) {
+                        $pemilik = Pemilik::find($value);
+                        $fail('Pemilik "' . ($pemilik->nama ?? 'ini') . '" sudah terdaftar sebagai member lain.');
+                    }
+                },
+            ],
             'id_level'        => 'required|exists:member_level,id_level',
-            'berlaku_mulai'   => 'required|date',
-            'berlaku_hingga'  => 'required|date|after_or_equal:berlaku_mulai',
+            'berlaku_mulai'   => 'required|date|after_or_equal:today',
+            'berlaku_hingga'  => 'required|date|after:berlaku_mulai',
             'status'          => 'required|in:aktif,expired',
+        ], [
+            'id_pemilik.required' => 'Pemilik harus dipilih',
+            'id_pemilik.exists' => 'Pemilik tidak valid',
+            'id_level.required' => 'Level member harus dipilih',
+            'berlaku_mulai.required' => 'Tanggal berlaku mulai harus diisi',
+            'berlaku_mulai.after_or_equal' => 'Tanggal berlaku mulai tidak boleh sebelum hari ini',
+            'berlaku_hingga.required' => 'Tanggal berlaku hingga harus diisi',
+            'berlaku_hingga.after' => 'Tanggal berlaku hingga harus setelah tanggal berlaku mulai',
+            'status.required' => 'Status harus dipilih',
         ]);
 
         // Simpan data original
@@ -121,6 +176,16 @@ class MemberController extends Controller
     public function restore($id)
     {
         $member = Member::onlyTrashed()->findOrFail($id);
+        
+        // Validasi: Cek apakah pemilik sudah terdaftar sebagai member aktif
+        $existingMember = Member::where('id_pemilik', $member->id_pemilik)->first();
+        
+        if ($existingMember) {
+            return redirect()
+                ->route('member.trash')
+                ->with('error', 'Gagal! Pemilik "' . ($member->pemilik->nama ?? 'ini') . '" sudah terdaftar sebagai member aktif.');
+        }
+        
         $member->restore();
         
         // Load relasi

@@ -8,6 +8,7 @@ use App\Models\Kendaraan;
 use App\Models\AreaKapasitas;
 use App\Models\TipeKendaraan;
 use App\Models\ActivityLog;
+use App\Rules\PlatNomorIndonesia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -77,15 +78,22 @@ class TransaksiMasukController extends Controller
         Log::info('Request data:', $request->all());
 
         $request->validate([
-            'plat_nomor' => 'required|string|max:13',
+            'plat_nomor' => ['required', 'string', 'max:20', new PlatNomorIndonesia],
             'id_tipe' => 'required|exists:tipe_kendaraan,id_tipe',
             'id_area_manual' => 'nullable|exists:area_parkir,id_area',
+        ], [
+            'plat_nomor.required' => 'Plat nomor harus diisi',
+            'plat_nomor.max' => 'Plat nomor terlalu panjang',
+            'id_tipe.required' => 'Tipe kendaraan harus dipilih',
+            'id_tipe.exists' => 'Tipe kendaraan tidak valid',
+            'id_area_manual.exists' => 'Area parkir tidak valid',
         ]);
 
         DB::beginTransaction();
 
         try {
-            $platNomor = strtoupper(trim($request->plat_nomor));
+            // Normalize plat nomor menggunakan PlatNomorIndonesia rule
+            $platNomor = PlatNomorIndonesia::normalize($request->plat_nomor);
             
             Log::info('Normalized plat:', ['plat' => $platNomor, 'length' => strlen($platNomor)]);
 
@@ -98,7 +106,7 @@ class TransaksiMasukController extends Controller
                 DB::rollBack();
                 return back()
                     ->withInput()
-                    ->with('error', 'Kendaraan ' . $platNomor . ' masih parkir');
+                    ->with('error', 'Kendaraan ' . $platNomor . ' masih parkir di area ' . $sedangParkir->areaParkir->nama_area);
             }
 
             // Cek/buat kendaraan
@@ -109,7 +117,7 @@ class TransaksiMasukController extends Controller
                     DB::rollBack();
                     return back()
                         ->withInput()
-                        ->with('error', 'Plat ' . $platNomor . ' terdaftar sebagai ' . $kendaraan->tipe->tipe_kendaraan);
+                        ->with('error', 'Plat ' . $platNomor . ' terdaftar sebagai ' . $kendaraan->tipe->tipe_kendaraan . ', bukan ' . TipeKendaraan::find($request->id_tipe)->tipe_kendaraan);
                 }
                 Log::info('Using existing vehicle:', ['id' => $kendaraan->id_kendaraan]);
             } else {
@@ -151,13 +159,13 @@ class TransaksiMasukController extends Controller
                     DB::rollBack();
                     return back()
                         ->withInput()
-                        ->with('error', 'Slot parkir penuh untuk tipe ini');
+                        ->with('error', 'Slot parkir penuh untuk tipe kendaraan ini');
                 }
             }
 
             Log::info('Slot found:', [
                 'area' => $kapasitas->id_area, 
-                'lokasi' => $kapasitas->area->lokasi,
+                'lokasi' => $kapasitas->area->nama_area,
                 'remaining' => $kapasitas->kapasitas
             ]);
 
@@ -201,7 +209,7 @@ class TransaksiMasukController extends Controller
             ActivityLog::create([
                 'id_user' => $userId,
                 'action' => 'transaksi_masuk',
-                'description' => "Transaksi masuk: {$platNomor} ({$kendaraan->tipe->tipe_kendaraan}) - {$kapasitas->area->lokasi}",
+                'description' => "Transaksi masuk: {$platNomor} ({$kendaraan->tipe->tipe_kendaraan}) - {$kapasitas->area->nama_area}",
                 'id_transaksi' => $transaksi->id_transaksi,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -209,7 +217,7 @@ class TransaksiMasukController extends Controller
                     'kode_tiket' => $kodeTiket,
                     'plat_nomor' => $platNomor,
                     'tipe_kendaraan' => $kendaraan->tipe->tipe_kendaraan,
-                    'area' => $kapasitas->area->lokasi,
+                    'area' => $kapasitas->area->nama_area,
                     'waktu_masuk' => now()->format('Y-m-d H:i:s'),
                 ])
             ]);

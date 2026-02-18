@@ -53,8 +53,8 @@
                                 type="text"
                                 id="platInput"
                                 name="plat_nomor"
-                                class="form-control form-control-lg"
-                                placeholder="Ketik minimal 1 atau 2 karakter"
+                                class="form-control form-control-lg @error('plat_nomor') is-invalid @enderror"
+                                placeholder="Contoh: B 1234 ABC"
                                 value="{{ old('plat_nomor') }}"
                                 autocomplete="off"
                                 required
@@ -64,11 +64,12 @@
                             <ul id="platDropdown" class="list-group position-absolute w-100 shadow-lg" style="z-index: 1050; display: none; max-height: 300px; overflow-y: auto;"></ul>
 
                             @error('plat_nomor')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
 
                             <small class="text-muted">
-                                <i class="fas fa-info-circle"></i> Autocomplete aktif
+                                <i class="fas fa-info-circle"></i> 
+                                Format: 1-2 huruf, spasi, 1-4 angka, spasi, 1-3 huruf | Auto-format & Autocomplete aktif
                             </small>
 
                             <div id="statusKendaraan" class="mt-2"></div>
@@ -86,7 +87,7 @@
 
                             <select
                                 id="tipeSelect"
-                                class="form-select form-select-lg"
+                                class="form-select form-select-lg @error('id_tipe') is-invalid @enderror"
                                 required
                             >
                                 <option value="">-- Pilih Tipe --</option>
@@ -98,7 +99,7 @@
                             </select>
 
                             @error('id_tipe')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -109,12 +110,14 @@
                                 <span class="text-danger">*</span>
                             </label>
                             
-                            <select id="areaSelect" name="id_area_manual" class="form-select form-select-lg">
+                            <select id="areaSelect" 
+                                    name="id_area_manual" 
+                                    class="form-select form-select-lg @error('id_area_manual') is-invalid @enderror">
                                 <option value="">-- Pilih Area --</option>
                             </select>
                             
                             @error('id_area_manual')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             
                             <small class="text-muted">
@@ -428,7 +431,7 @@
                 if (data.length === 0) {
                     platDropdown.innerHTML = '<li class="list-group-item text-muted">Tidak ditemukan</li>';
                     
-                    statusDiv.innerHTML = '<div class="alert alert-info mt-2"><i class="fas fa-plus-circle"></i> <strong>Kendaraan Baru</strong><br>Pastikan format plat sudah benar, lalu pilih tipe kendaraan</div>';
+                    statusDiv.innerHTML = '<div class="alert alert-info alert-sm mt-2"><i class="fas fa-plus-circle"></i> <strong>Kendaraan Baru</strong><br>Pastikan format plat sudah benar, lalu pilih tipe kendaraan</div>';
                     
                     tipeSelect.disabled = false;
                     isKendaraanTerdaftar = false;
@@ -475,7 +478,7 @@
         
         platDropdown.style.display = 'none';
         
-        statusDiv.innerHTML = '<div class="alert alert-success mt-2"><i class="fas fa-check-circle"></i> <strong>Kendaraan Terdaftar</strong><br>' + item.plat_nomor + ' - ' + item.tipe_kendaraan + '</div>';
+        statusDiv.innerHTML = '<div class="alert alert-success alert-sm mt-2"><i class="fas fa-check-circle"></i> <strong>Kendaraan Terdaftar</strong><br>' + item.plat_nomor + ' - ' + item.tipe_kendaraan + '</div>';
         
         showAreaSelect(item.id_tipe);
     }
